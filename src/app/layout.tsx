@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
+import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
 import "./globals.css";
 
 const satoshi = localFont({
@@ -17,6 +18,14 @@ const satoshi = localFont({
 export const metadata: Metadata = {
   title: "Clan Fitness",
   description: "Track gym, steps, and food with your accountability group.",
+  appleWebApp: {
+    title: "Clan Fitness",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0d0d0d",
 };
 
 export default function RootLayout({
@@ -41,7 +50,10 @@ export default function RootLayout({
         className={`${satoshi.variable} h-full antialiased`}
         suppressHydrationWarning
       >
-        <body className="min-h-full flex flex-col font-sans">{children}</body>
+        <body className="min-h-full flex flex-col font-sans">
+          {children}
+          <ServiceWorkerRegistration />
+        </body>
       </html>
     </ClerkProvider>
   );

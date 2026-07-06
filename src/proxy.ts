@@ -1,6 +1,16 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isPublicRoute = createRouteMatcher(["/", "/sign-in(.*)", "/sign-up(.*)"]);
+const isPublicRoute = createRouteMatcher([
+  "/",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  // PWA manifest icons — extensionless, so unlike .webmanifest they aren't excluded by the
+  // matcher below, and browsers fetch them unauthenticated during install-eligibility checks.
+  "/icon-192",
+  "/icon-512",
+  "/icon-512-maskable",
+  "/apple-icon",
+]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {
