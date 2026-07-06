@@ -1,8 +1,10 @@
 import { sql } from "drizzle-orm";
 import {
+  date,
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   text,
@@ -18,6 +20,8 @@ export const checkInVisibilityEnum = pgEnum("check_in_visibility", [
   "public_to_clan",
   "private",
 ]);
+export const genderEnum = pgEnum("gender", ["female", "male", "other", "prefer_not_to_say"]);
+export const unitsPreferenceEnum = pgEnum("units_preference", ["metric", "imperial"]);
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(), // Clerk user id
@@ -25,6 +29,14 @@ export const users = pgTable("users", {
   email: text("email").notNull(),
   avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Profile details below are user-entered, private to the user, and never touched by the
+  // Clerk sync upsert in getOrSyncCurrentUser() (its onConflictDoUpdate only sets name/email/avatarUrl).
+  heightCm: integer("height_cm"),
+  weightKg: numeric("weight_kg", { precision: 5, scale: 1 }),
+  dateOfBirth: date("date_of_birth", { mode: "string" }),
+  gender: genderEnum("gender"),
+  unitsPreference: unitsPreferenceEnum("units_preference").notNull().default("metric"),
+  bio: text("bio"),
 });
 
 export const clans = pgTable("clans", {
