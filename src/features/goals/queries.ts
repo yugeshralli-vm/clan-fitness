@@ -1,11 +1,14 @@
 import { and, eq, inArray } from "drizzle-orm";
+import { cache } from "react";
 import { db } from "@/db";
 import { goals } from "@/db/schema";
 import type { GoalType } from "./types";
 
-export async function getUserGoals(userId: string) {
+// Cached per-request: both the (app) layout's onboarding gate and individual pages
+// (Logs, Profile) call this with the same userId in the same render pass.
+export const getUserGoals = cache(async (userId: string) => {
   return db.select().from(goals).where(eq(goals.userId, userId));
-}
+});
 
 export async function getUserGoal(userId: string, type: GoalType) {
   const [goal] = await db

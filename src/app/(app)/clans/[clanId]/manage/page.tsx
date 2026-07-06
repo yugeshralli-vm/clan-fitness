@@ -12,13 +12,13 @@ export default async function ManageClanPage({ params }: { params: Promise<{ cla
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  const [clan, membership] = await Promise.all([
+  const [clan, membership, members] = await Promise.all([
     getClanById(clanId),
     getClanMembership(userId, clanId),
+    getClanMembers(clanId),
   ]);
   if (!clan || !membership) notFound();
 
-  const members = await getClanMembers(clanId);
   const memberIds = members.map((m) => m.user.id);
   const [loggedToday, weeklyCounts, streaks, gymGoals] = await Promise.all([
     getUsersLoggedToday(memberIds),

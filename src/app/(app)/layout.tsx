@@ -12,10 +12,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  const memberships = await getUserClans(userId);
+  const [memberships, goals] = await Promise.all([getUserClans(userId), getUserGoals(userId)]);
   if (memberships.length === 0) redirect("/onboarding");
-
-  const goals = await getUserGoals(userId);
   if (goals.length === 0) redirect("/onboarding/goals");
 
   return (
