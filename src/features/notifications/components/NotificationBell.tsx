@@ -2,7 +2,7 @@
 
 import { Activity, AtSign, Bell, Heart, MessageCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type ComponentType } from "react";
+import { Suspense, use, useState, useTransition, type ComponentType } from "react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { getNotificationsAndMarkRead } from "../actions";
 import { formatRelativeTime } from "../format";
@@ -17,16 +17,19 @@ const TYPE_ICON: Record<NotificationType, ComponentType<{ size?: number; classNa
   missed_log: Bell,
 };
 
-export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: number }) {
+export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: Promise<number> }) {
   const [open, setOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
+  // Replaces a plain unreadCount state: the resolved count only becomes known once the promise
+  // settles (inside the Suspense-isolated leaf below), so "cleared" is the one thing this
+  // component can control synchronously on open — the leaf combines both to decide what to show.
+  const [cleared, setCleared] = useState(false);
   const [items, setItems] = useState<NotificationRow[] | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
   function handleOpen() {
     setOpen(true);
-    setUnreadCount(0);
+    setCleared(true);
     startTransition(async () => {
       setItems(await getNotificationsAndMarkRead());
     });
@@ -44,15 +47,13 @@ export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: n
       <button
         type="button"
         onClick={handleOpen}
-        aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
+        aria-label="Notifications"
         className="relative flex min-h-11 min-w-11 items-center justify-center text-foreground-tertiary hover:text-foreground"
       >
         <Bell size={22} strokeWidth={1.75} />
-        {unreadCount > 0 && (
-          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold leading-none text-white">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        )}
+        <Suspense fallback={null}>
+          <UnreadBadge countPromise={initialUnreadCount} cleared={cleared} />
+        </Suspense>
       </button>
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title="Notifications">
@@ -90,5 +91,17 @@ export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: n
         )}
       </BottomSheet>
     </>
+  );
+}
+
+/** Isolated so only this leaf ever suspends — the bell icon and button render immediately regardless. */
+function UnreadBadge({ countPromise, cleared }: { countPromise: Promise<number>; cleared: boolean }) {
+  const count = use(countPromise);
+  const display = cleared ? 0 : count;
+  if (display <= 0) return null;
+  return (
+    <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold leading-none text-white">
+      {display > 9 ? "9+" : display}
+    </span>
   );
 }

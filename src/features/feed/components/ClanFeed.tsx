@@ -5,8 +5,20 @@ import { getClanMembers } from "@/features/clans";
 import { getReactionsForCheckIns } from "@/features/reactions";
 import { FeedList } from "./FeedList";
 
-export async function ClanFeed({ clanId, highlightCheckInId }: { clanId: string; highlightCheckInId?: string }) {
+export async function ClanFeed({
+  clanId,
+  highlightCheckInId,
+  members: providedMembers,
+}: {
+  clanId: string;
+  highlightCheckInId?: string;
+  members?: Awaited<ReturnType<typeof getClanMembers>>;
+}) {
   const { userId } = await auth();
+  // Doesn't depend on `rows`, so kick it off immediately instead of waiting behind
+  // getCheckInById/getClanFeed below — unless the caller already fetched it (e.g. the clan page
+  // needs the member list/count anyway), in which case reuse that instead of a second query.
+  const membersPromise = providedMembers ? Promise.resolve(providedMembers) : getClanMembers(clanId);
 
   // A notification can deep-link to a check-in older than what the default (latest) page would
   // include. Anchor the very first page just after it instead, so it's guaranteed to be present
@@ -32,7 +44,7 @@ export async function ClanFeed({ clanId, highlightCheckInId }: { clanId: string;
   const [reactions, comments, members] = await Promise.all([
     userId ? getReactionsForCheckIns(checkInIds, userId) : Promise.resolve({}),
     getCommentsForCheckIns(checkInIds),
-    getClanMembers(clanId),
+    membersPromise,
   ]);
   const clanMembers = members.map((m) => ({ id: m.user.id, name: m.user.name, avatarUrl: m.user.avatarUrl }));
 

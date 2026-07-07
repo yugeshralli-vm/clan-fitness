@@ -8,7 +8,6 @@ import {
   ClanSettingsSheet,
   getClanById,
   getClanMembers,
-  getClanMembership,
 } from "@/features/clans";
 import { getGoalsForUsers } from "@/features/goals";
 
@@ -24,11 +23,10 @@ export default async function ManageClanPage({ params }: { params: Promise<{ cla
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  const [clan, membership, members] = await Promise.all([
-    getClanById(clanId),
-    getClanMembership(userId, clanId),
-    getClanMembers(clanId),
-  ]);
+  // members already contains the current user's own row (with role), so a separate
+  // getClanMembership call for the same table would be a redundant query.
+  const [clan, members] = await Promise.all([getClanById(clanId), getClanMembers(clanId)]);
+  const membership = members.find((m) => m.user.id === userId);
   if (!clan || !membership) notFound();
 
   const memberIds = members.map((m) => m.user.id);

@@ -2,7 +2,7 @@ import { UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BottomNav } from "@/components/shared/BottomNav";
+import { BottomNav, type FeedCheckInEntry } from "@/components/shared/BottomNav";
 import { ClanSwitcher } from "@/components/shared/ClanSwitcher";
 import { PullToRefresh } from "@/components/shared/PullToRefresh";
 import { getLatestCheckInAt } from "@/features/check-ins";
@@ -18,15 +18,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (memberships.length === 0) redirect("/onboarding");
 
   const clans = memberships.map((m) => m.clan);
-  const [latestFeedCheckInAtByClan, initialUnreadCount] = await Promise.all([
-    Promise.all(
-      clans.map(async (clan) => ({
-        clanId: clan.id,
-        latestCheckInAt: await getLatestCheckInAt(clan.id, userId),
-      })),
-    ),
-    getUnreadNotificationCount(userId),
-  ]);
+
+  // Neither of these is needed for {children} or BottomNav's actual nav links to render — both
+  // only feed a small decoration (an unread-feed dot, a notification badge count). Deliberately
+  // NOT awaited here: the still-pending promises are handed straight to BottomNav/NotificationBell,
+  // which unwrap them with use() inside their own small Suspense boundaries, so page content and
+  // navigation stream immediately instead of blocking on these DB round-trips. .catch() fallbacks
+  // guard against an unhandled rejection taking down an already-streamed page (this app has no
+  // error.tsx boundary).
+  const latestFeedCheckInAtByClan: Promise<FeedCheckInEntry[]> = Promise.all(
+    clans.map(async (clan) => ({
+      clanId: clan.id,
+      latestCheckInAt: await getLatestCheckInAt(clan.id, userId),
+    })),
+  ).catch((): FeedCheckInEntry[] => clans.map((clan) => ({ clanId: clan.id, latestCheckInAt: null })));
+
+  const initialUnreadCount: Promise<number> = getUnreadNotificationCount(userId).catch(() => 0);
 
   return (
     <div className="flex min-h-screen flex-1 flex-col">

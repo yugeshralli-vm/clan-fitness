@@ -1,11 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/shared/Avatar";
 import type { FeedRow } from "@/features/check-ins";
 import type { FoodCheckInValue } from "@/features/check-ins/types";
-import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { CommentSheet } from "@/features/comments/components/CommentSheet";
 import type { ClanMemberOption } from "@/features/comments/components/CommentThread";
 import type { CommentWithUser } from "@/features/comments/queries";
@@ -13,6 +13,11 @@ import { ReactionBar } from "@/features/reactions/components/ReactionBar";
 import type { ReactionSummary } from "@/features/reactions/types";
 import { loadMoreFeed } from "../actions";
 import { describeCheckIn, formatDayLabel, groupByDay, groupByUserAndDay, TYPE_ICON } from "../group";
+
+// Only needed after a photo tap — code-split so it's not part of the feed's initial bundle.
+const ImageLightbox = dynamic(() =>
+  import("@/components/ui/image-lightbox").then((m) => m.ImageLightbox),
+);
 
 export function FeedList({
   clanId,

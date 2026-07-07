@@ -10,10 +10,14 @@ export async function loadMoreFeed(clanId: string, beforeIso: string) {
   const { userId } = await auth();
   if (!userId) throw new Error("Not signed in.");
 
-  const membership = await getClanMembership(userId, clanId);
+  // Authorization and the data fetch don't depend on each other — run them concurrently, but
+  // still gate the return on membership so an unauthorized caller never sees the fetched rows.
+  const [membership, rows] = await Promise.all([
+    getClanMembership(userId, clanId),
+    getClanFeed(clanId, new Date(beforeIso)),
+  ]);
   if (!membership) throw new Error("Not a member of this clan.");
 
-  const rows = await getClanFeed(clanId, new Date(beforeIso));
   const checkInIds = rows.map((row) => row.checkIn.id);
   const [reactions, comments] = await Promise.all([
     getReactionsForCheckIns(checkInIds, userId),

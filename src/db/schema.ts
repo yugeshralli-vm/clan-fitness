@@ -102,7 +102,13 @@ export const checkIns = pgTable(
     visibility: checkInVisibilityEnum("visibility").notNull().default("public_to_clan"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (t) => [index("check_ins_created_at_idx").on(t.createdAt)],
+  (t) => [
+    index("check_ins_created_at_idx").on(t.createdAt),
+    // Covers getTodaysCheckIn/getUserWeeklyCount/getWeeklyCounts/getWeeklyStepsTotals (equality on
+    // userId+type, range on createdAt) and helps getUserStreak/getStreaks (equality-only prefix)
+    // avoid a full scan. Lost when the multi-clan migration dropped clanId without a replacement.
+    index("check_ins_user_type_created_at_idx").on(t.userId, t.type, t.createdAt),
+  ],
 );
 
 export const reactions = pgTable(
@@ -121,17 +127,21 @@ export const reactions = pgTable(
   (t) => [uniqueIndex("reactions_check_in_user_emoji_idx").on(t.checkInId, t.userId, t.emoji)],
 );
 
-export const comments = pgTable("comments", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  checkInId: uuid("check_in_id")
-    .notNull()
-    .references(() => checkIns.id),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id),
-  text: text("text").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const comments = pgTable(
+  "comments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    checkInId: uuid("check_in_id")
+      .notNull()
+      .references(() => checkIns.id),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    text: text("text").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("comments_check_in_id_idx").on(t.checkInId)],
+);
 
 export const pushSubscriptions = pgTable(
   "push_subscriptions",

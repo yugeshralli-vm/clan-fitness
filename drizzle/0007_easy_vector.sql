@@ -1,0 +1,2 @@
+CREATE INDEX "check_ins_user_type_created_at_idx" ON "check_ins" USING btree ("user_id","type","created_at");--> statement-breakpoint
+CREATE INDEX "comments_check_in_id_idx" ON "comments" USING btree ("check_in_id");

@@ -3,15 +3,17 @@
 import { Activity, House, Shield, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ComponentType } from "react";
+import { Suspense, use, useEffect, useState, type ComponentType } from "react";
 import { useActiveClanId, type ClanOption } from "@/lib/active-clan";
+
+export type FeedCheckInEntry = { clanId: string; latestCheckInAt: Date | null };
 
 type NavItem = {
   href: string;
   label: string;
   icon: ComponentType<{ size?: number; strokeWidth?: number }>;
   match: (pathname: string) => boolean;
-  hasUnread?: boolean;
+  showUnreadDot?: boolean;
 };
 
 function feedSeenKey(clanId: string) {
@@ -23,7 +25,7 @@ export function BottomNav({
   latestFeedCheckInAtByClan,
 }: {
   clans: ClanOption[];
-  latestFeedCheckInAtByClan: { clanId: string; latestCheckInAt: Date | null }[];
+  latestFeedCheckInAtByClan: Promise<FeedCheckInEntry[]>;
 }) {
   const pathname = usePathname();
   const [seenAt, setSeenAt] = useState<Date | null>(null);
@@ -45,9 +47,6 @@ export function BottomNav({
     setSeenAt(now);
   }, [clanId, pathname]);
 
-  const latestCheckInAt = latestFeedCheckInAtByClan.find((c) => c.clanId === clanId)?.latestCheckInAt ?? null;
-  const hasUnreadFeed = !!latestCheckInAt && (!seenAt || seenAt < latestCheckInAt);
-
   const items: NavItem[] = [
     ...(clanId
       ? [
@@ -56,7 +55,7 @@ export function BottomNav({
             label: "Feed",
             icon: Activity,
             match: (p: string) => p === `/clans/${clanId}`,
-            hasUnread: hasUnreadFeed,
+            showUnreadDot: true,
           },
         ]
       : []),
@@ -89,8 +88,10 @@ export function BottomNav({
           >
             <span className="relative">
               <Icon size={22} strokeWidth={active ? 2.25 : 1.75} />
-              {item.hasUnread && (
-                <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-danger" />
+              {item.showUnreadDot && clanId && (
+                <Suspense fallback={null}>
+                  <FeedUnreadDot promise={latestFeedCheckInAtByClan} clanId={clanId} seenAt={seenAt} />
+                </Suspense>
               )}
             </span>
             {item.label}
@@ -99,4 +100,21 @@ export function BottomNav({
       })}
     </nav>
   );
+}
+
+/** Isolated so only this leaf ever suspends — the nav links and icon render immediately regardless. */
+function FeedUnreadDot({
+  promise,
+  clanId,
+  seenAt,
+}: {
+  promise: Promise<FeedCheckInEntry[]>;
+  clanId: string;
+  seenAt: Date | null;
+}) {
+  const entries = use(promise);
+  const latestCheckInAt = entries.find((e) => e.clanId === clanId)?.latestCheckInAt ?? null;
+  const hasUnread = !!latestCheckInAt && (!seenAt || seenAt < latestCheckInAt);
+  if (!hasUnread) return null;
+  return <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-danger" />;
 }

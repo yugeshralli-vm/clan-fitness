@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { notifications, pushSubscriptions } from "@/db/schema";
 
@@ -18,9 +18,9 @@ export async function getNotificationsForUser(userId: string, limit = 30) {
 }
 
 export async function getUnreadNotificationCount(userId: string) {
-  const rows = await db
-    .select({ id: notifications.id })
+  const [row] = await db
+    .select({ count: count() })
     .from(notifications)
     .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
-  return rows.length;
+  return row?.count ?? 0;
 }
