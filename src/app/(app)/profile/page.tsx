@@ -55,6 +55,7 @@ export default async function ProfilePage() {
             </p>
           )}
           <ProfileDetailsForm
+            key={[heightDisplay, weightDisplay, details?.dateOfBirth, details?.gender, unitsPreference, details?.bio].join("|")}
             heightDisplay={heightDisplay}
             weightDisplay={weightDisplay}
             dateOfBirth={details?.dateOfBirth ?? undefined}
