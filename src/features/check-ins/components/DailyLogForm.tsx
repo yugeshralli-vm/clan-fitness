@@ -1,7 +1,7 @@
 "use client";
 
 import { upload } from "@vercel/blob/client";
-import { X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import Image from "next/image";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -205,8 +205,12 @@ export function DailyLogForm({
                     <div className="h-14 w-14 rounded-lg border border-danger bg-surface" />
                   )}
                   {slot.kind === "new" && slot.uploading && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40">
-                      <span className="text-[10px] font-semibold text-white">Uploading…</span>
+                    <div
+                      className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40"
+                      role="status"
+                      aria-label="Uploading photo"
+                    >
+                      <Loader2 size={20} className="animate-spin text-white" />
                     </div>
                   )}
                   {slot.kind === "new" && slot.error && (
