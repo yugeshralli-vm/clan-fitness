@@ -13,7 +13,7 @@ import type { CommentWithUser } from "@/features/comments/queries";
 import { ReactionBar } from "@/features/reactions/components/ReactionBar";
 import type { ReactionSummary } from "@/features/reactions/types";
 import { loadMoreFeed } from "../actions";
-import { describeCheckIn, formatDayLabel, groupByDay, groupByUserAndDay, TYPE_ICON } from "../group";
+import { describeCheckIn, formatDayLabel, getCheckInIcon, groupByDay, groupByUserAndDay } from "../group";
 
 // Only needed after a photo tap — code-split so it's not part of the feed's initial bundle.
 const ImageLightbox = dynamic(() =>
@@ -125,8 +125,8 @@ export function FeedList({
                         return (
                           <div key={checkIn.id} className="flex flex-col gap-2">
                             <p className="flex items-center gap-1.5 text-sm text-foreground-secondary">
-                              <span aria-hidden>{TYPE_ICON[checkIn.type] ?? "✅"}</span>
-                              {describeCheckIn(checkIn.type, checkIn.value)}
+                              <span aria-hidden>{getCheckInIcon(checkIn.type, checkIn.value)}</span>
+                              {describeCheckIn(checkIn.type, checkIn.value, checkIn.id)}
                             </p>
                             <PhotoCarousel
                               photos={photoUrls}

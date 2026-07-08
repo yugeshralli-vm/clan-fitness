@@ -1,9 +1,67 @@
 import type { FeedRow } from "@/features/check-ins";
-import type { FoodCheckInValue, GymCheckInValue, StepsCheckInValue } from "@/features/check-ins/types";
+import type { FoodCheckInValue, FoodStatus, GymCheckInValue, StepsCheckInValue } from "@/features/check-ins/types";
 
 export const TYPE_ICON: Record<string, string> = { gym: "💪", steps: "👟", food: "🥗" };
 
-export function describeCheckIn(type: string, value: unknown) {
+// A pool per status rather than one fixed line each, so the feed doesn't read like a template —
+// picked deterministically per check-in (see pickDeterministic) so the same entry doesn't change
+// wording on every reload.
+const FOOD_STATUS_PHRASES: Record<FoodStatus, string[]> = {
+  yes: [
+    "Nailed it",
+    "Locked in",
+    "On point",
+    "Goal met",
+    "Crushed it",
+    "Dialed in",
+    "Green flag",
+    "Good job, me",
+    "Chef's kiss",
+    "Let's go",
+  ],
+  partial: [
+    "Almost",
+    "Close enough",
+    "Getting there",
+    "Halfway",
+    "So close",
+    "Nearly",
+    "Almost there",
+    "Close call",
+    "Not bad",
+    "Nearly there",
+  ],
+  no: [
+    "Me vs. discipline",
+    "Discipline lost",
+    "Not today",
+    "Maybe tomorrow",
+    "Oops.",
+    "We'll reset.",
+    "Skill issue.",
+    "I folded.",
+    "The snacks won.",
+    "We don't talk about it.",
+  ],
+};
+
+// Deterministic, not random — the same check-in must show the same phrase on every render (the
+// feed re-renders on every page load), so the pick is seeded by the check-in's own id instead of
+// Math.random().
+function pickDeterministic<T>(items: T[], seed: string): T {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  return items[Math.abs(hash) % items.length];
+}
+
+// A food check-in without a status is just a shared photo — not necessarily of food — so it gets
+// a camera icon instead of TYPE_ICON's fork-and-plate.
+export function getCheckInIcon(type: string, value: unknown) {
+  if (type === "food" && !(value as FoodCheckInValue).status) return "📷";
+  return TYPE_ICON[type] ?? "✅";
+}
+
+export function describeCheckIn(type: string, value: unknown, checkInId: string) {
   switch (type) {
     case "gym": {
       const { note } = value as GymCheckInValue;
@@ -18,7 +76,8 @@ export function describeCheckIn(type: string, value: unknown) {
       // inline in the feed card regardless (see FeedList.tsx), this is just the caption line above it.
       const { status, note } = value as FoodCheckInValue;
       if (!status) return note ? `Shared a photo — "${note}"` : "Shared a photo";
-      return note ? `Logged a meal — "${note}"` : "Logged a meal";
+      const label = pickDeterministic(FOOD_STATUS_PHRASES[status], checkInId);
+      return note ? `${label} — "${note}"` : label;
     }
     default:
       return "Checked in";
