@@ -6,46 +6,44 @@ ALTER TABLE "reactions" ADD CONSTRAINT "reactions_clan_id_clans_id_fk" FOREIGN K
 -- migration can safely set NOT NULL. Preference order mirrors getClanFeed's own visibility rule
 -- (checkIns.createdAt >= clanMemberships.joinedAt): pick the membership joined at-or-before the
 -- row's created_at, most recent such membership first; fall back to the user's earliest
--- membership overall if none predates the row.
+-- membership overall if none predates the row. Plain correlated subqueries, not `FROM LATERAL`
+-- — Postgres doesn't allow a LATERAL subquery in an UPDATE's FROM clause to reference the
+-- UPDATE's own target table (errors with "invalid reference to FROM-clause entry for table").
 UPDATE "reactions" AS r
-SET "clan_id" = ranked.clan_id
-FROM LATERAL (
+SET "clan_id" = (
   SELECT cm.clan_id
   FROM "clan_memberships" cm
   WHERE cm.user_id = r.user_id
     AND cm.joined_at <= r.created_at
   ORDER BY cm.joined_at DESC
   LIMIT 1
-) AS ranked
+)
 WHERE r.clan_id IS NULL;--> statement-breakpoint
 UPDATE "reactions" AS r
-SET "clan_id" = ranked.clan_id
-FROM LATERAL (
+SET "clan_id" = (
   SELECT cm.clan_id
   FROM "clan_memberships" cm
   WHERE cm.user_id = r.user_id
   ORDER BY cm.joined_at ASC
   LIMIT 1
-) AS ranked
+)
 WHERE r.clan_id IS NULL;--> statement-breakpoint
 UPDATE "comments" AS c
-SET "clan_id" = ranked.clan_id
-FROM LATERAL (
+SET "clan_id" = (
   SELECT cm.clan_id
   FROM "clan_memberships" cm
   WHERE cm.user_id = c.user_id
     AND cm.joined_at <= c.created_at
   ORDER BY cm.joined_at DESC
   LIMIT 1
-) AS ranked
+)
 WHERE c.clan_id IS NULL;--> statement-breakpoint
 UPDATE "comments" AS c
-SET "clan_id" = ranked.clan_id
-FROM LATERAL (
+SET "clan_id" = (
   SELECT cm.clan_id
   FROM "clan_memberships" cm
   WHERE cm.user_id = c.user_id
   ORDER BY cm.joined_at ASC
   LIMIT 1
-) AS ranked
+)
 WHERE c.clan_id IS NULL;
