@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import webpush from "web-push";
 import { db } from "@/db";
 import { notifications, pushSubscriptions, users } from "@/db/schema";
+import { logNotificationDelivery } from "./delivery-log";
 import { getPushSubscriptionsForUser } from "./queries";
 import { sendEmailNotification } from "./send-email";
 import type { NotificationPayload } from "./types";
@@ -32,11 +33,12 @@ function ensureVapidConfigured(): boolean {
 async function sendPushNotifications(userId: string, payload: NotificationPayload) {
   if (!ensureVapidConfigured()) {
     console.warn("Push notifications are not configured (missing VAPID env vars); skipping.");
+    await logNotificationDelivery(userId, "push", "skipped", "VAPID env vars missing");
     return;
   }
 
   const subscriptions = await getPushSubscriptionsForUser(userId);
-  if (subscriptions.length === 0) return;
+  if (subscriptions.length === 0) return; // no devices — not a delivery attempt worth logging
 
   await Promise.all(
     subscriptions.map(async (sub) => {
@@ -48,12 +50,15 @@ async function sendPushNotifications(userId: string, payload: NotificationPayloa
           },
           JSON.stringify(payload),
         );
+        await logNotificationDelivery(userId, "push", "sent");
       } catch (error) {
         const statusCode = (error as { statusCode?: number }).statusCode;
         if (statusCode === 404 || statusCode === 410) {
           await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
+          await logNotificationDelivery(userId, "push", "failed", `${statusCode} Gone (subscription removed)`);
         } else {
           console.error("Failed to send push notification:", error);
+          await logNotificationDelivery(userId, "push", "failed", (error as Error).message ?? String(error));
         }
       }
     }),
@@ -82,7 +87,7 @@ export async function notifyUser(userId: string, payload: NotificationPayload) {
 
   await Promise.all([
     sendPushNotifications(userId, payload),
-    user?.email ? sendEmailNotification(user.email, payload) : Promise.resolve(),
+    user?.email ? sendEmailNotification(userId, user.email, payload) : Promise.resolve(),
     persistNotification(userId, payload),
   ]);
 }

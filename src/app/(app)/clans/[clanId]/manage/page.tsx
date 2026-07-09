@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
+import { getAppConfig } from "@/features/admin";
 import {
   getStepGoalStreaks,
   getUsersLoggedToday,
@@ -16,13 +17,6 @@ import {
 } from "@/features/clans";
 import { getGoalsForUsers } from "@/features/goals";
 
-const DEFAULT_WEEKLY_GYM_TARGET = 4;
-const DEFAULT_DAILY_STEPS_TARGET = 8000;
-const STEP_WEIGHT = 0.5;
-const STREAK_WEIGHT = 0.25;
-const GYM_WEIGHT = 0.25;
-const STREAK_CAP_DAYS = 7;
-
 export default async function ManageClanPage({ params }: { params: Promise<{ clanId: string }> }) {
   const { clanId } = await params;
   const { userId } = await auth();
@@ -30,9 +24,16 @@ export default async function ManageClanPage({ params }: { params: Promise<{ cla
 
   // members already contains the current user's own row (with role), so a separate
   // getClanMembership call for the same table would be a redundant query.
-  const [clan, members] = await Promise.all([getClanById(clanId), getClanMembers(clanId)]);
+  const [clan, members, config] = await Promise.all([
+    getClanById(clanId),
+    getClanMembers(clanId),
+    getAppConfig(),
+  ]);
   const membership = members.find((m) => m.user.id === userId);
   if (!clan || !membership) notFound();
+
+  const { stepWeight, streakWeight, gymWeight, streakCapDays, defaultWeeklyGymTarget, defaultDailyStepsTarget } =
+    config;
 
   const memberIds = members.map((m) => m.user.id);
   const [loggedToday, weeklyCounts, weeklyStepsTotals, gymGoals, stepsGoals] = await Promise.all([
@@ -47,23 +48,25 @@ export default async function ManageClanPage({ params }: { params: Promise<{ cla
   // Gym turnout is low across most clans, so gym only gets a minority weight rather than being
   // dropped outright: % of weekly steps goal (50%), a streak of days the steps *goal* was
   // actually hit rather than just logged, capped at 7 days (25%), and % of weekly gym goal (25%).
+  // All of these — the three weights, the streak cap, and the two defaults below — are
+  // admin-tunable from /admin without a deploy (see src/features/admin/config.ts).
   const dailyStepTargets = new Map(
-    memberIds.map((id) => [id, stepsGoals.get(id) ?? DEFAULT_DAILY_STEPS_TARGET]),
+    memberIds.map((id) => [id, stepsGoals.get(id) ?? defaultDailyStepsTarget]),
   );
   const streaks = await getStepGoalStreaks(memberIds, dailyStepTargets);
 
   const leaderboard = members
     .map(({ user }) => {
       const weeklyCount = weeklyCounts.get(user.id) ?? 0;
-      const weeklyTarget = gymGoals.get(user.id) ?? DEFAULT_WEEKLY_GYM_TARGET;
+      const weeklyTarget = gymGoals.get(user.id) ?? defaultWeeklyGymTarget;
       const weeklySteps = weeklyStepsTotals.get(user.id) ?? 0;
-      const weeklyStepsTarget = (stepsGoals.get(user.id) ?? DEFAULT_DAILY_STEPS_TARGET) * 7;
+      const weeklyStepsTarget = (stepsGoals.get(user.id) ?? defaultDailyStepsTarget) * 7;
       const streak = streaks.get(user.id) ?? 0;
 
       const stepPct = Math.min(weeklySteps / weeklyStepsTarget, 1) * 100;
       const gymPct = Math.min(weeklyCount / weeklyTarget, 1) * 100;
-      const streakPct = Math.min(streak / STREAK_CAP_DAYS, 1) * 100;
-      const score = STEP_WEIGHT * stepPct + STREAK_WEIGHT * streakPct + GYM_WEIGHT * gymPct;
+      const streakPct = Math.min(streak / streakCapDays, 1) * 100;
+      const score = stepWeight * stepPct + streakWeight * streakPct + gymWeight * gymPct;
 
       return { user, weeklyCount, weeklyTarget, weeklySteps, weeklyStepsTarget, streak, stepPct, gymPct, score };
     })

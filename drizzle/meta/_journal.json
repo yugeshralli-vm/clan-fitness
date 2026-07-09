@@ -71,6 +71,13 @@
       "when": 1783474290017,
       "tag": "0009_petite_adam_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783563229182,
+      "tag": "0010_mean_barracuda",
+      "breakpoints": true
     }
   ]
 }

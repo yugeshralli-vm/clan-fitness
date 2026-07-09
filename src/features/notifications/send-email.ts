@@ -1,6 +1,7 @@
 import "server-only";
 
 import { Resend } from "resend";
+import { logNotificationDelivery } from "./delivery-log";
 import type { NotificationPayload } from "./types";
 
 let resendClient: Resend | null = null;
@@ -31,10 +32,11 @@ function escapeHtml(value: string) {
 }
 
 /** Sends a notification email to a single address. Silently no-ops if Resend isn't configured. */
-export async function sendEmailNotification(to: string, payload: NotificationPayload) {
+export async function sendEmailNotification(userId: string, to: string, payload: NotificationPayload) {
   const resend = getResendClient();
   if (!resend) {
     console.warn("Email notifications are not configured (missing RESEND_API_KEY); skipping.");
+    await logNotificationDelivery(userId, "email", "skipped", "RESEND_API_KEY missing");
     return;
   }
 
@@ -61,8 +63,14 @@ export async function sendEmailNotification(to: string, payload: NotificationPay
         </div>
       `,
     });
-    if (error) console.error("Failed to send email notification:", error);
+    if (error) {
+      console.error("Failed to send email notification:", error);
+      await logNotificationDelivery(userId, "email", "failed", error.message);
+    } else {
+      await logNotificationDelivery(userId, "email", "sent");
+    }
   } catch (error) {
     console.error("Failed to send email notification:", error);
+    await logNotificationDelivery(userId, "email", "failed", (error as Error).message ?? String(error));
   }
 }

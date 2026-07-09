@@ -196,3 +196,39 @@ export const notifications = pgTable(
     index("notifications_user_unread_idx").on(t.userId).where(sql`${t.readAt} is null`),
   ],
 );
+
+// Admin-tunable settings (leaderboard weights, default goal fallbacks, etc.) as key/value so a
+// new knob never needs a migration — only reading a new key in code and adding it to the admin
+// form does. Absent keys fall back to defaults in code (see src/features/admin/config.ts), so
+// this table can start (and stay, for untouched keys) completely empty.
+export const appConfig = pgTable("app_config", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const notificationChannelEnum = pgEnum("notification_channel", ["push", "email"]);
+export const notificationDeliveryStatusEnum = pgEnum("notification_delivery_status", [
+  "sent",
+  "failed",
+  "skipped",
+]);
+
+// One row per actual send attempt (one per push subscription, one per email) — push has had
+// ongoing reliability issues with zero durable record of why; this is that record. Starts empty
+// and only reflects delivery attempts from the moment it ships, not retroactively.
+export const notificationDeliveries = pgTable(
+  "notification_deliveries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    channel: notificationChannelEnum("channel").notNull(),
+    status: notificationDeliveryStatusEnum("status").notNull(),
+    // e.g. "missing VAPID env vars", "404 Gone (subscription removed)", a truncated provider error
+    detail: text("detail"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("notification_deliveries_created_at_idx").on(t.createdAt)],
+);
