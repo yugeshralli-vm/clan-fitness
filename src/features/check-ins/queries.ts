@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lt, ne } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { checkIns, clanMemberships, users } from "@/db/schema";
 import type { CheckInType, StepsCheckInValue } from "./types";
@@ -19,14 +19,18 @@ function startOfWeek() {
 }
 
 // A check-in has no clanId of its own — it's visible in a clan's feed whenever its author is
-// (still) a member of that clan and it was logged after they joined. No row-fanout risk: the
-// unique (userId, clanId) index on clanMemberships means at most one membership row matches per
-// checkIns.userId for a fixed clanId filter.
+// (still) a member of that clan and it was logged from the day they joined onward. Compares
+// against the start of joinedAt's calendar day, not the exact joinedAt instant: otherwise a
+// check-in logged earlier the same day someone joins (a common case — log first thing, join a
+// clan later) would be wrongly excluded, since its createdAt would fall before the precise
+// joinedAt timestamp despite being the same day. No row-fanout risk: the unique (userId, clanId)
+// index on clanMemberships means at most one membership row matches per checkIns.userId for a
+// fixed clanId filter.
 export async function getClanFeed(clanId: string, before?: Date) {
   const conditions = [
     eq(clanMemberships.clanId, clanId),
     eq(checkIns.visibility, "public_to_clan"),
-    gte(checkIns.createdAt, clanMemberships.joinedAt),
+    gte(checkIns.createdAt, sql`date_trunc('day', ${clanMemberships.joinedAt})`),
   ];
   if (before) conditions.push(lt(checkIns.createdAt, before));
 
@@ -52,7 +56,7 @@ export async function getLatestCheckInAt(clanId: string, excludeUserId?: string)
   const conditions = [
     eq(clanMemberships.clanId, clanId),
     eq(checkIns.visibility, "public_to_clan"),
-    gte(checkIns.createdAt, clanMemberships.joinedAt),
+    gte(checkIns.createdAt, sql`date_trunc('day', ${clanMemberships.joinedAt})`),
   ];
   if (excludeUserId) conditions.push(ne(checkIns.userId, excludeUserId));
 
