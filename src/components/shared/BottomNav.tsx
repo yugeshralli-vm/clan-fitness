@@ -74,7 +74,7 @@ export function BottomNav({
   ];
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-surface-border bg-surface pb-[env(safe-area-inset-bottom)] will-change-transform sm:hidden">
+    <nav className="flex shrink-0 border-t border-surface-border bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden">
       {items.map((item) => {
         const Icon = item.icon;
         const active = item.match(pathname);

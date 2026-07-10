@@ -36,8 +36,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const initialUnreadCount: Promise<number> = getUnreadNotificationCount(userId).catch(() => 0);
 
   return (
-    <div className="flex min-h-dvh flex-1 flex-col">
-      <header className="fixed inset-x-0 top-0 z-10 border-b border-surface-border bg-surface pt-[env(safe-area-inset-top)] will-change-transform">
+    // h-dvh + overflow-hidden makes this the only "page" — the document itself never scrolls, so
+    // the mobile browser's address-bar show/hide animation (which is what was making the old
+    // fixed header/BottomNav visibly jump) never triggers. <main> is the sole scroll container.
+    <div className="flex h-dvh flex-1 flex-col overflow-hidden">
+      <header className="shrink-0 border-b border-surface-border bg-surface pt-[env(safe-area-inset-top)]">
         <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
           <Link
             href="/logs"
@@ -52,7 +55,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
-      <main className="flex-1 pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0">
+      <main className="min-h-0 flex-1">
         <PullToRefresh>{children}</PullToRefresh>
       </main>
       <BottomNav clans={clans} latestFeedCheckInAtByClan={latestFeedCheckInAtByClan} />
