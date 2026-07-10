@@ -40,7 +40,7 @@ export async function createClan(
   await db.insert(clanMemberships).values({ userId: user.id, clanId: clan.id, role: "admin" });
 
   revalidatePath("/logs");
-  redirect(`/clans/${clan.id}`);
+  redirect(`/clans/${clan.id}/welcome`);
 }
 
 export async function joinClanByInviteCode(
@@ -65,7 +65,7 @@ export async function joinClanByInviteCode(
   await db.insert(clanMemberships).values({ userId: user.id, clanId: clan.id, role: "member" });
 
   revalidatePath("/logs");
-  redirect(`/clans/${clan.id}`);
+  redirect(`/clans/${clan.id}/welcome`);
 }
 
 export async function leaveClan(clanId: string) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { setGoals } from "../actions";
@@ -8,14 +8,33 @@ import { setGoals } from "../actions";
 export function GoalsForm({
   gymTarget,
   stepsTarget,
+  onSuccess,
 }: {
   gymTarget?: number;
   stepsTarget?: number;
+  onSuccess?: () => void;
 }) {
   const [state, action, pending] = useActionState(setGoals, undefined);
+  // setGoals returns undefined both before any submission and after a successful one (it only
+  // ever returns something on the error path), so state alone can't tell "just saved" apart from
+  // "never submitted" — this ref is what actually distinguishes the two.
+  const submittedRef = useRef(false);
+
+  useEffect(() => {
+    if (submittedRef.current && !pending && !state?.error) {
+      submittedRef.current = false;
+      onSuccess?.();
+    }
+  }, [pending, state, onSuccess]);
 
   return (
-    <form action={action} className="flex flex-col gap-6">
+    <form
+      action={(formData) => {
+        submittedRef.current = true;
+        action(formData);
+      }}
+      className="flex flex-col gap-6"
+    >
       <div className="flex flex-col gap-2">
         <label htmlFor="daysPerWeek" className="text-sm font-medium text-foreground">
           Gym days per week
