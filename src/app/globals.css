@@ -51,16 +51,21 @@ body {
   overflow-x: hidden;
 }
 
-/* Plain vh first, dvh second (same property twice, on purpose) — browsers that don't understand
-   100dvh drop that whole declaration as invalid and keep the vh value above it, so the app shell
-   still gets a real, functional height instead of collapsing. Some Android WebViews/browsers lack
-   dvh support (or have an unstable dvh implementation); without this fallback, AppLayout's shell
-   can end up with ~0 height, which collapses <main>'s flex-derived height and silently breaks the
-   only scroll container on the page. A Tailwind utility can't express two layered declarations for
-   the same property in a guaranteed cascade order, hence the plain CSS class. */
+/* Plain vh first, svh second (same property twice, on purpose) — browsers that don't understand
+   100svh drop that whole declaration as invalid and keep the vh value above it, so very old
+   browsers still get a real, functional height instead of collapsing.
+   Deliberately svh, not dvh: svh is the "small viewport height" — the guaranteed-visible height
+   once the browser's own UI chrome (address bar, etc.) is at its largest/most-expanded — whereas
+   dvh live-tracks whatever state that chrome currently happens to be in. On Android, dvh (and
+   plain vh, which has the same issue historically) can report a taller-than-actually-visible
+   height on first paint before the browser's chrome has settled, which is normally harmless
+   because scrolling the page corrects it — but this shell disables document scroll entirely (see
+   AppLayout), so there's no later correction. Anything sized off that overestimate, including
+   BottomNav (the last flex child in the shell), ends up positioned below the real visible screen
+   and looks like it's missing. svh is a fixed, conservative value that's never too tall. */
 .app-shell-height {
   height: 100vh;
-  height: 100dvh;
+  height: 100svh;
 }
 
 input,
