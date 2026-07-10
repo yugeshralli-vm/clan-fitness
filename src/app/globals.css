@@ -51,6 +51,18 @@ body {
   overflow-x: hidden;
 }
 
+/* Plain vh first, dvh second (same property twice, on purpose) — browsers that don't understand
+   100dvh drop that whole declaration as invalid and keep the vh value above it, so the app shell
+   still gets a real, functional height instead of collapsing. Some Android WebViews/browsers lack
+   dvh support (or have an unstable dvh implementation); without this fallback, AppLayout's shell
+   can end up with ~0 height, which collapses <main>'s flex-derived height and silently breaks the
+   only scroll container on the page. A Tailwind utility can't express two layered declarations for
+   the same property in a guaranteed cascade order, hence the plain CSS class. */
+.app-shell-height {
+  height: 100vh;
+  height: 100dvh;
+}
+
 input,
 textarea,
 [contenteditable="true"] {

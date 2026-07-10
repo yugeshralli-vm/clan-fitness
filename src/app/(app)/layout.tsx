@@ -36,10 +36,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const initialUnreadCount: Promise<number> = getUnreadNotificationCount(userId).catch(() => 0);
 
   return (
-    // h-dvh + overflow-hidden makes this the only "page" — the document itself never scrolls, so
-    // the mobile browser's address-bar show/hide animation (which is what was making the old
-    // fixed header/BottomNav visibly jump) never triggers. <main> is the sole scroll container.
-    <div className="flex h-dvh flex-1 flex-col overflow-hidden">
+    // app-shell-height (100dvh, with a plain 100vh fallback — see globals.css) + overflow-hidden
+    // makes this the only "page" — the document itself never scrolls, so the mobile browser's
+    // address-bar show/hide animation (which is what was making the old fixed header/BottomNav
+    // visibly jump) never triggers. <main> is the sole scroll container.
+    <div className="app-shell-height flex flex-1 flex-col overflow-hidden">
       <header className="shrink-0 border-b border-surface-border bg-surface pt-[env(safe-area-inset-top)]">
         <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
           <Link
