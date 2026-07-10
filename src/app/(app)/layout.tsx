@@ -36,7 +36,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const initialUnreadCount: Promise<number> = getUnreadNotificationCount(userId).catch(() => 0);
 
   return (
-    // app-shell-height (100dvh, with a plain 100vh fallback — see globals.css) + overflow-hidden
+    // app-shell-height (100svh, with a plain 100vh fallback — see globals.css) + overflow-hidden
     // makes this the only "page" — the document itself never scrolls, so the mobile browser's
     // address-bar show/hide animation (which is what was making the old fixed header/BottomNav
     // visibly jump) never triggers. <main> is the sole scroll container.
