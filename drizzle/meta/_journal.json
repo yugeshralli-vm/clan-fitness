@@ -85,6 +85,13 @@
       "when": 1783694215885,
       "tag": "0011_freezing_hiroim",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783745689805,
+      "tag": "0012_glorious_arclight",
+      "breakpoints": true
     }
   ]
 }

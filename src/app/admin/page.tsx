@@ -1,5 +1,6 @@
 import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { ConfigForm, getAppConfig, getNotificationDeliveryStats, NotificationHealthSection } from "@/features/admin";
+import { FeedbackThreadsList } from "@/features/feedback";
 
 export default async function AdminPage() {
   const [config, notificationStats] = await Promise.all([getAppConfig(), getNotificationDeliveryStats()]);
@@ -11,6 +12,7 @@ export default async function AdminPage() {
       label: "Notifications",
       content: <NotificationHealthSection stats={notificationStats} />,
     },
+    { id: "feedback", label: "Feedback", content: <FeedbackThreadsList /> },
   ];
 
   return (

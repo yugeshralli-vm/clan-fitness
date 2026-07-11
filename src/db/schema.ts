@@ -175,6 +175,7 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "check_in",
   "missed_log", // reserved for a future cron-driven reminder; unused for now
   "nudge",
+  "feedback",
 ]);
 
 export const notifications = pgTable(
@@ -232,4 +233,23 @@ export const notificationDeliveries = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("notification_deliveries_created_at_idx").on(t.createdAt)],
+);
+
+export const feedbackSenderEnum = pgEnum("feedback_sender", ["user", "admin"]);
+
+// Each user has exactly one thread with "the team" — userId alone identifies it on both sides,
+// no separate conversation id needed. sender records who actually wrote this particular message
+// (the thread owner, or the admin replying into it).
+export const feedbackMessages = pgTable(
+  "feedback_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    sender: feedbackSenderEnum("sender").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("feedback_messages_user_created_at_idx").on(t.userId, t.createdAt)],
 );

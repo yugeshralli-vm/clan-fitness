@@ -6,7 +6,14 @@ export type PushSubscriptionInput = {
   };
 };
 
-export type NotificationType = "comment" | "mention" | "reaction" | "check_in" | "missed_log" | "nudge";
+export type NotificationType =
+  | "comment"
+  | "mention"
+  | "reaction"
+  | "check_in"
+  | "missed_log"
+  | "nudge"
+  | "feedback";
 
 export type NotificationPayload = {
   type: NotificationType;
