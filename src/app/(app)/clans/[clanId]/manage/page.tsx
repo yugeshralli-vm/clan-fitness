@@ -100,7 +100,12 @@ export default async function ManageClanPage({ params }: { params: Promise<{ cla
         </div>
         {isAdmin && (
           <div className="shrink-0">
-            <ClanSettingsSheet clanId={clanId} clanName={clan.name} inviteCode={clan.inviteCode} />
+            <ClanSettingsSheet
+              clanId={clanId}
+              clanName={clan.name}
+              inviteCode={clan.inviteCode}
+              memberCount={members.length}
+            />
           </div>
         )}
       </div>

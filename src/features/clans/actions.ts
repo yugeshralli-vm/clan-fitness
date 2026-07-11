@@ -4,14 +4,14 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { clanMemberships, clans } from "@/db/schema";
+import { clanMemberships, clans, comments, reactions } from "@/db/schema";
 import { getUsersLoggedToday } from "@/features/check-ins";
 import { hasBeenNudgedToday } from "@/features/notifications/queries";
 import { notifyUser } from "@/features/notifications/send";
 import { getOrSyncCurrentUser } from "@/lib/current-user";
 import { generateInviteCode } from "@/lib/invite-code";
 import { pickNudgeMessage } from "./nudge-messages";
-import { getClanByInviteCode, getClanMemberCount, getClanMembership } from "./queries";
+import { getClanById, getClanByInviteCode, getClanMemberCount, getClanMembership } from "./queries";
 
 export type ClanActionState = { error?: string } | undefined;
 
@@ -107,6 +107,40 @@ export async function renameClan(
 
   revalidatePath(`/clans/${clanId}`);
   revalidatePath(`/clans/${clanId}/manage`);
+}
+
+export async function deleteClan(
+  clanId: string,
+  _prevState: ClanActionState,
+  formData: FormData,
+): Promise<ClanActionState> {
+  const user = await getOrSyncCurrentUser();
+  if (!user) return { error: "Not signed in." };
+
+  const membership = await getClanMembership(user.id, clanId);
+  if (!membership || membership.role !== "admin") {
+    return { error: "Only the clan admin can delete the clan." };
+  }
+
+  const clan = await getClanById(clanId);
+  if (!clan) return { error: "Clan not found." };
+
+  const confirmName = String(formData.get("confirmName") ?? "").trim();
+  if (confirmName !== clan.name) {
+    return { error: "Type the clan name exactly to confirm." };
+  }
+
+  // No transaction (the Neon HTTP driver doesn't support them, same as makeAdmin below) — delete
+  // children before the parent row, since none of these FKs cascade. checkIns are untouched:
+  // they're personal records with no clanId of their own (see schema.ts), so members keep their
+  // own log history — only this clan's shared reactions/comments/membership rows go away.
+  await db.delete(reactions).where(eq(reactions.clanId, clanId));
+  await db.delete(comments).where(eq(comments.clanId, clanId));
+  await db.delete(clanMemberships).where(eq(clanMemberships.clanId, clanId));
+  await db.delete(clans).where(eq(clans.id, clanId));
+
+  revalidatePath("/logs");
+  redirect("/logs");
 }
 
 export async function removeMember(clanId: string, memberUserId: string) {

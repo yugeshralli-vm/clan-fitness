@@ -5,6 +5,7 @@ import { useState } from "react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { regenerateInviteCode } from "../actions";
+import { DeleteClanSection } from "./DeleteClanSection";
 import { RenameClanForm } from "./RenameClanForm";
 import { ShareInviteButton } from "./ShareInviteButton";
 
@@ -12,10 +13,12 @@ export function ClanSettingsSheet({
   clanId,
   clanName,
   inviteCode,
+  memberCount,
 }: {
   clanId: string;
   clanName: string;
   inviteCode: string;
+  memberCount: number;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -58,6 +61,11 @@ export function ClanSettingsSheet({
           <section className="flex flex-col gap-3 border-t border-surface-border pt-4">
             <h3 className="text-sm font-semibold text-foreground-secondary">Rename clan</h3>
             <RenameClanForm clanId={clanId} currentName={clanName} />
+          </section>
+
+          <section className="flex flex-col gap-3 border-t border-surface-border pt-4">
+            <h3 className="text-sm font-semibold text-danger">Danger zone</h3>
+            <DeleteClanSection clanId={clanId} clanName={clanName} memberCount={memberCount} />
           </section>
         </div>
       </BottomSheet>
