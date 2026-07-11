@@ -9,6 +9,11 @@ import { hasBeenPromptedToInstall, markInstallPrompted } from "./installPrompted
 
 const PROMPT_DELAY_MS = 1500;
 const POLL_INTERVAL_MS = 1000;
+// iOS Safari not yet added to the home screen never shows the notification soft-ask at all (push
+// isn't available there until installed), so hasBeenPrompted() below would never become true for
+// that profile — without a cap this interval ran forever, every second, for the entire time such
+// a user stayed on any page in the app.
+const MAX_POLL_ATTEMPTS = 30;
 
 // Not in the DOM lib types — this is a non-standard Chromium-only event.
 interface BeforeInstallPromptEvent extends Event {
@@ -44,8 +49,10 @@ export function InstallPrompt() {
     if (!deferredPrompt && !isIOSDevice()) return;
 
     let timeout: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
     const interval = setInterval(() => {
-      if (!hasBeenPrompted()) return;
+      attempts++;
+      if (!hasBeenPrompted() && attempts < MAX_POLL_ATTEMPTS) return;
       clearInterval(interval);
       shown.current = true;
       timeout = setTimeout(() => {
