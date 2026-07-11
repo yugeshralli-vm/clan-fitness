@@ -60,7 +60,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <BottomNav clans={clans} latestFeedCheckInAtByClan={latestFeedCheckInAtByClan} />
       <AutoEnableNotifications />
       <InstallPrompt />
-      <FeedbackFab />
+      <FeedbackFab userId={userId} />
     </div>
   );
 }

@@ -26,7 +26,7 @@ export function Tabs({ tabs, defaultTabId }: { tabs: TabItem[]; defaultTabId?: s
               aria-controls={`panel-${tab.id}`}
               tabIndex={active ? 0 : -1}
               onClick={() => setActiveId(tab.id)}
-              className={`min-h-9 flex-1 rounded-full px-3 text-sm font-semibold transition-colors ${
+              className={`min-h-9 min-w-0 flex-1 truncate rounded-full px-3 text-sm font-semibold transition-colors ${
                 active
                   ? "bg-accent text-accent-foreground"
                   : "text-foreground-tertiary hover:text-foreground-secondary"

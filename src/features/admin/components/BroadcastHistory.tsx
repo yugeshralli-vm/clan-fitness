@@ -12,8 +12,10 @@ export function BroadcastHistory({ broadcasts }: { broadcasts: History }) {
         <ul className="flex flex-col divide-y divide-surface-border">
           {broadcasts.map((broadcast) => (
             <li key={broadcast.id} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-foreground">{broadcast.title}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="min-w-0 flex-1 break-words text-sm font-semibold text-foreground">
+                  {broadcast.title}
+                </p>
                 <time className="shrink-0 text-xs text-foreground-muted">
                   {broadcast.sentAt.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                 </time>
