@@ -1,4 +1,4 @@
-export const REACTION_EMOJIS = ["🔥", "👏", "💪"] as const;
+export const REACTION_EMOJIS = ["🔥", "👏", "👎"] as const;
 
 export type Reactor = { id: string; name: string; avatarUrl: string | null };
 
