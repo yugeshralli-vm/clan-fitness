@@ -4,6 +4,7 @@ import {
   BroadcastHistory,
   ConfigForm,
   getAllClansForAdmin,
+  getAllUsersForAdmin,
   getAppConfig,
   getBroadcastHistory,
   getNotificationDeliveryStats,
@@ -12,10 +13,11 @@ import {
 import { FeedbackThreadsList } from "@/features/feedback";
 
 export default async function AdminPage() {
-  const [config, notificationStats, clans, broadcasts] = await Promise.all([
+  const [config, notificationStats, clans, allUsers, broadcasts] = await Promise.all([
     getAppConfig(),
     getNotificationDeliveryStats(),
     getAllClansForAdmin(),
+    getAllUsersForAdmin(),
     getBroadcastHistory(),
   ]);
 
@@ -26,7 +28,7 @@ export default async function AdminPage() {
       label: "Broadcast",
       content: (
         <div className="flex flex-col gap-6">
-          <BroadcastComposer clans={clans} />
+          <BroadcastComposer clans={clans} users={allUsers} />
           <BroadcastHistory broadcasts={broadcasts} />
           <NotificationHealthSection stats={notificationStats} />
         </div>

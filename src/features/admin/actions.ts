@@ -7,7 +7,7 @@ import { getClanMembersForClanIds } from "@/features/clans";
 import { notifyUser } from "@/features/notifications/send";
 import { isAdminUser } from "./auth";
 import type { ConfigKey } from "./config";
-import { getAllClansForAdmin } from "./queries";
+import { getAllClansForAdmin, getAllUsersForAdmin } from "./queries";
 
 export type AdminActionState = { error?: string } | undefined;
 
@@ -75,23 +75,34 @@ export async function sendBroadcast(
 
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
-  const clanIds = formData.getAll("clanIds").map(String);
+  const targetType = formData.get("targetType") === "user" ? ("user" as const) : ("clan" as const);
 
   if (!title) return { error: "Title is required." };
   if (!body) return { error: "Message is required." };
-  if (clanIds.length === 0) return { error: "Select at least one clan." };
 
-  const [allClans, members] = await Promise.all([getAllClansForAdmin(), getClanMembersForClanIds(clanIds)]);
+  let recipientIds: string[];
+  let targetNames: string[];
 
-  const clanNames = allClans.filter((clan) => clanIds.includes(clan.id)).map((clan) => clan.name);
-  // A member of more than one selected clan gets exactly one notification, not one per clan.
-  const recipientIds = [...new Set(members.map((member) => member.user.id))];
+  if (targetType === "user") {
+    const userIds = formData.getAll("userIds").map(String);
+    if (userIds.length === 0) return { error: "Select at least one person." };
+    const allUsers = await getAllUsersForAdmin();
+    targetNames = allUsers.filter((user) => userIds.includes(user.id)).map((user) => user.name);
+    recipientIds = [...new Set(userIds)];
+  } else {
+    const clanIds = formData.getAll("clanIds").map(String);
+    if (clanIds.length === 0) return { error: "Select at least one clan." };
+    const [allClans, members] = await Promise.all([getAllClansForAdmin(), getClanMembersForClanIds(clanIds)]);
+    targetNames = allClans.filter((clan) => clanIds.includes(clan.id)).map((clan) => clan.name);
+    // A member of more than one selected clan gets exactly one notification, not one per clan.
+    recipientIds = [...new Set(members.map((member) => member.user.id))];
+  }
 
   await Promise.all(
     recipientIds.map((userId) => notifyUser(userId, { type: "broadcast", title, body })),
   );
 
-  await db.insert(broadcastMessages).values({ title, body, clanNames, recipientCount: recipientIds.length });
+  await db.insert(broadcastMessages).values({ title, body, targetType, targetNames, recipientCount: recipientIds.length });
 
   revalidatePath("/admin");
   return { sentCount: recipientIds.length };

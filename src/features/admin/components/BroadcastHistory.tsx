@@ -22,8 +22,8 @@ export function BroadcastHistory({ broadcasts }: { broadcasts: History }) {
               </div>
               <p className="text-sm text-foreground-secondary">{broadcast.body}</p>
               <p className="text-xs text-foreground-tertiary">
-                To {broadcast.clanNames.join(", ")} — {broadcast.recipientCount}{" "}
-                {broadcast.recipientCount === 1 ? "person" : "people"}
+                To {broadcast.targetType === "clan" ? "clans" : "people"}: {broadcast.targetNames.join(", ")} —{" "}
+                {broadcast.recipientCount} {broadcast.recipientCount === 1 ? "person" : "people"}
               </p>
             </li>
           ))}

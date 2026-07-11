@@ -2,7 +2,7 @@ import "server-only";
 
 import { count, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { broadcastMessages, clanMemberships, clans, notificationDeliveries } from "@/db/schema";
+import { broadcastMessages, clanMemberships, clans, notificationDeliveries, users } from "@/db/schema";
 
 export async function getNotificationDeliveryStats() {
   const [counts, recentFailures] = await Promise.all([
@@ -34,6 +34,14 @@ export async function getAllClansForAdmin() {
     .leftJoin(clanMemberships, eq(clanMemberships.clanId, clans.id))
     .groupBy(clans.id, clans.name)
     .orderBy(clans.name);
+}
+
+/** Every user, for the broadcast composer's user picker. */
+export async function getAllUsersForAdmin() {
+  return db
+    .select({ id: users.id, name: users.name, avatarUrl: users.avatarUrl })
+    .from(users)
+    .orderBy(users.name);
 }
 
 export async function getBroadcastHistory() {

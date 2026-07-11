@@ -255,15 +255,20 @@ export const feedbackMessages = pgTable(
   (t) => [index("feedback_messages_user_created_at_idx").on(t.userId, t.createdAt)],
 );
 
-// clanNames is a snapshot of the target clans' names at send time, not a live join/FK list — so
-// history stays correct even if a targeted clan is later deleted (see deleteClan).
+export const broadcastTargetTypeEnum = pgEnum("broadcast_target_type", ["clan", "user"]);
+
+// targetNames is a snapshot of the target clans'/users' names at send time (db column kept as
+// clan_names from the original clan-only implementation — holds user names too when targetType
+// is "user"), not a live join/FK list, so history stays correct even if a targeted clan is later
+// deleted or a user renames themselves (see deleteClan).
 export const broadcastMessages = pgTable(
   "broadcast_messages",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     title: text("title").notNull(),
     body: text("body").notNull(),
-    clanNames: jsonb("clan_names").notNull().$type<string[]>(),
+    targetType: broadcastTargetTypeEnum("target_type").notNull().default("clan"),
+    targetNames: jsonb("clan_names").notNull().$type<string[]>(),
     recipientCount: integer("recipient_count").notNull(),
     sentAt: timestamp("sent_at").defaultNow().notNull(),
   },
