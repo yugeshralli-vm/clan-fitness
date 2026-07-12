@@ -56,7 +56,7 @@ export function SystemPostCard({
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
               <span className="w-fit rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent">
-                🏆 This week&apos;s top 3
+                🏆 Wall of Fame
               </span>
               <span className="text-xs text-foreground-muted">{formatWeekRange(post.weekStart, post.weekEnd)}</span>
             </div>
