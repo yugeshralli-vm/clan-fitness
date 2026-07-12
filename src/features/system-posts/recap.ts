@@ -39,7 +39,7 @@ export async function generateWeeklyRecap(clanId: string, window: { start: Date;
 
   // Already sorted score desc, then streak desc, then name asc — same tie-break as the live
   // leaderboard, so Top 3 is just this array's head and Wall of Shame is its tail.
-  const ranked = await computeLeaderboard(eligibleMembers, config, stepsGoals, gymGoals, window);
+  const ranked = await computeLeaderboard(eligibleMembers, config, stepsGoals, gymGoals, window, 7);
 
   const topThree = ranked.filter((entry) => entry.score > 0).slice(0, 3);
   const topThreeIds = new Set(topThree.map((entry) => entry.user.id));

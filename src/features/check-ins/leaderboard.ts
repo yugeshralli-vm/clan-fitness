@@ -16,10 +16,10 @@ type LeaderboardConfig = {
 
 export type LeaderboardEntry = {
   user: typeof users.$inferSelect;
-  weeklyCount: number;
-  weeklyTarget: number;
-  weeklySteps: number;
-  weeklyStepsTarget: number;
+  periodCount: number;
+  periodTarget: number;
+  periodSteps: number;
+  periodStepsTarget: number;
   streak: number;
   stepPct: number;
   gymPct: number;
@@ -27,16 +27,16 @@ export type LeaderboardEntry = {
 };
 
 type MemberStats = {
-  weeklyCount: number;
-  weeklyTarget: number;
-  weeklySteps: number;
-  weeklyStepsTarget: number;
+  periodCount: number;
+  periodTarget: number;
+  periodSteps: number;
+  periodStepsTarget: number;
   streak: number;
 };
 
 // Pure so the weighted formula and tie-break are trivially eyeballed/tested in isolation from the
-// DB — this is the one formula behind every leaderboard this app shows (the live manage-page tab
-// and the weekly Top 3/Wall of Shame recap).
+// DB — this is the one formula behind every leaderboard this app shows (the live manage-page tab,
+// in any of its Today/Week/Month views, and the weekly Top 3/Wall of Shame recap).
 function scoreMembers(
   members: ClanMember[],
   config: LeaderboardConfig,
@@ -47,8 +47,8 @@ function scoreMembers(
   return members
     .map(({ user }) => {
       const stats = statsByUser.get(user.id)!;
-      const stepPct = Math.min(stats.weeklySteps / stats.weeklyStepsTarget, 1) * 100;
-      const gymPct = Math.min(stats.weeklyCount / stats.weeklyTarget, 1) * 100;
+      const stepPct = Math.min(stats.periodSteps / stats.periodStepsTarget, 1) * 100;
+      const gymPct = Math.min(stats.periodCount / stats.periodTarget, 1) * 100;
       const streakPct = Math.min(stats.streak / streakCapDays, 1) * 100;
       const score = stepWeight * stepPct + streakWeight * streakPct + gymWeight * gymPct;
       return { user, ...stats, stepPct, gymPct, score };
@@ -58,8 +58,16 @@ function scoreMembers(
 
 /**
  * Weighted score (steps/streak/gym — admin-tunable via getAppConfig) for a clan's members over an
- * arbitrary window. The live manage page passes the current week (window.end left undefined, so
- * it defaults to now); the weekly recap cron job passes last week's exact {start, end}.
+ * arbitrary window. `window` controls what actually gets counted ({start, end}, end defaulting to
+ * now for a live/in-progress period). `periodLengthDays` is a *separate* concept: the full nominal
+ * length of the period being scored against, used only to scale targets (daily steps target ×
+ * periodLengthDays, weekly gym target × periodLengthDays/7). It's deliberately not derived from
+ * `window.end - window.start` — for a live period `window.end` is "now", not the period's end, so
+ * that difference is elapsed time, not the full period length. Using elapsed time would make e.g.
+ * Monday's step count already read as ~100% of a same-day-prorated target, defeating the
+ * "progress toward a goal that grows over the period" behavior this is supposed to show.
+ * Callers: the live manage page passes today/this-week/this-month (1, 7, days-in-month); the
+ * weekly recap cron job passes a completed week (7).
  */
 export async function computeLeaderboard(
   members: ClanMember[],
@@ -67,13 +75,14 @@ export async function computeLeaderboard(
   stepsGoals: Map<string, number>,
   gymGoals: Map<string, number>,
   window: { start: Date; end?: Date },
+  periodLengthDays: number,
 ): Promise<LeaderboardEntry[]> {
   const memberIds = members.map((m) => m.user.id);
   const dailyStepTargets = new Map(
     memberIds.map((id) => [id, stepsGoals.get(id) ?? config.defaultDailyStepsTarget]),
   );
 
-  const [weeklyCounts, weeklyStepsTotals, streaks] = await Promise.all([
+  const [periodCounts, periodStepsTotals, streaks] = await Promise.all([
     getWeeklyCounts(memberIds, "gym", window),
     getWeeklyStepsTotals(memberIds, window),
     getStepGoalStreaks(memberIds, dailyStepTargets, window.end ?? new Date()),
@@ -83,10 +92,10 @@ export async function computeLeaderboard(
     memberIds.map((id) => [
       id,
       {
-        weeklyCount: weeklyCounts.get(id) ?? 0,
-        weeklyTarget: gymGoals.get(id) ?? config.defaultWeeklyGymTarget,
-        weeklySteps: weeklyStepsTotals.get(id) ?? 0,
-        weeklyStepsTarget: (stepsGoals.get(id) ?? config.defaultDailyStepsTarget) * 7,
+        periodCount: periodCounts.get(id) ?? 0,
+        periodTarget: (gymGoals.get(id) ?? config.defaultWeeklyGymTarget) * (periodLengthDays / 7),
+        periodSteps: periodStepsTotals.get(id) ?? 0,
+        periodStepsTarget: (stepsGoals.get(id) ?? config.defaultDailyStepsTarget) * periodLengthDays,
         streak: streaks.get(id) ?? 0,
       },
     ]),

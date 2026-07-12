@@ -13,7 +13,7 @@ function startOfDay(date = new Date()) {
   return start;
 }
 
-function startOfToday() {
+export function startOfToday() {
   return startOfDay();
 }
 
@@ -26,6 +26,10 @@ export function startOfWeek(now = new Date()) {
   candidate.setUTCDate(candidate.getUTCDate() - candidate.getUTCDay()); // this-or-last Sunday
   if (candidate.getTime() > now.getTime()) candidate.setUTCDate(candidate.getUTCDate() - 7); // hasn't crossed yet today
   return candidate;
+}
+
+export function startOfMonth(now = new Date()) {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
 }
 
 // A check-in has no clanId of its own — it's visible in a clan's feed whenever its author is

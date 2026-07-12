@@ -14,6 +14,8 @@ export {
   getUserWeeklyCount,
   getWeeklyCounts,
   getWeeklyStepsTotals,
+  startOfMonth,
+  startOfToday,
   startOfWeek,
 } from "./queries";
 export type { DateWindow, FeedRow } from "./queries";
