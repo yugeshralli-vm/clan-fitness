@@ -3,18 +3,18 @@
 import { MessageCircle } from "lucide-react";
 import { useState } from "react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { CommentThread, type ClanMemberOption } from "./CommentThread";
+import { CommentThread, type ClanMemberOption, type CommentTarget } from "./CommentThread";
 import type { CommentWithUser } from "../queries";
 
 export function CommentSheet({
-  checkInId,
+  target,
   clanId,
   comments,
   currentUserId,
   clanMembers,
   onCommentsChange,
 }: {
-  checkInId: string;
+  target: CommentTarget;
   clanId: string;
   comments: CommentWithUser[];
   currentUserId?: string | null;
@@ -37,7 +37,7 @@ export function CommentSheet({
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title="Comments">
         <CommentThread
-          checkInId={checkInId}
+          target={target}
           clanId={clanId}
           comments={comments}
           currentUserId={currentUserId}

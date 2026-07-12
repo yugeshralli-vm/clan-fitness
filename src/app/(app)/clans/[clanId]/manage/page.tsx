@@ -2,12 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { getAppConfig } from "@/features/admin";
-import {
-  getStepGoalStreaks,
-  getUsersLoggedToday,
-  getWeeklyCounts,
-  getWeeklyStepsTotals,
-} from "@/features/check-ins";
+import { computeLeaderboard, getUsersLoggedToday, startOfWeek } from "@/features/check-ins";
 import {
   ClanLeaderboardSection,
   ClanMembersSection,
@@ -32,14 +27,9 @@ export default async function ManageClanPage({ params }: { params: Promise<{ cla
   const membership = members.find((m) => m.user.id === userId);
   if (!clan || !membership) notFound();
 
-  const { stepWeight, streakWeight, gymWeight, streakCapDays, defaultWeeklyGymTarget, defaultDailyStepsTarget } =
-    config;
-
   const memberIds = members.map((m) => m.user.id);
-  const [loggedToday, weeklyCounts, weeklyStepsTotals, gymGoals, stepsGoals] = await Promise.all([
+  const [loggedToday, gymGoals, stepsGoals] = await Promise.all([
     getUsersLoggedToday(memberIds),
-    getWeeklyCounts(memberIds, "gym"),
-    getWeeklyStepsTotals(memberIds),
     getGoalsForUsers(memberIds, "gym"),
     getGoalsForUsers(memberIds, "steps"),
   ]);
@@ -49,28 +39,11 @@ export default async function ManageClanPage({ params }: { params: Promise<{ cla
   // dropped outright: % of weekly steps goal (50%), a streak of days the steps *goal* was
   // actually hit rather than just logged, capped at 7 days (25%), and % of weekly gym goal (25%).
   // All of these — the three weights, the streak cap, and the two defaults below — are
-  // admin-tunable from /admin without a deploy (see src/features/admin/config.ts).
-  const dailyStepTargets = new Map(
-    memberIds.map((id) => [id, stepsGoals.get(id) ?? defaultDailyStepsTarget]),
-  );
-  const streaks = await getStepGoalStreaks(memberIds, dailyStepTargets);
-
-  const leaderboard = members
-    .map(({ user }) => {
-      const weeklyCount = weeklyCounts.get(user.id) ?? 0;
-      const weeklyTarget = gymGoals.get(user.id) ?? defaultWeeklyGymTarget;
-      const weeklySteps = weeklyStepsTotals.get(user.id) ?? 0;
-      const weeklyStepsTarget = (stepsGoals.get(user.id) ?? defaultDailyStepsTarget) * 7;
-      const streak = streaks.get(user.id) ?? 0;
-
-      const stepPct = Math.min(weeklySteps / weeklyStepsTarget, 1) * 100;
-      const gymPct = Math.min(weeklyCount / weeklyTarget, 1) * 100;
-      const streakPct = Math.min(streak / streakCapDays, 1) * 100;
-      const score = stepWeight * stepPct + streakWeight * streakPct + gymWeight * gymPct;
-
-      return { user, weeklyCount, weeklyTarget, weeklySteps, weeklyStepsTarget, streak, stepPct, gymPct, score };
-    })
-    .sort((a, b) => b.score - a.score || b.streak - a.streak || a.user.name.localeCompare(b.user.name));
+  // admin-tunable from /admin without a deploy (see src/features/admin/config.ts). The formula
+  // itself lives in computeLeaderboard so the weekly recap cron job scores past weeks identically.
+  const leaderboard = await computeLeaderboard(members, config, stepsGoals, gymGoals, {
+    start: startOfWeek(),
+  });
 
   const tabs: TabItem[] = [
     { id: "leaderboard", label: "Leaderboard", content: <ClanLeaderboardSection leaderboard={leaderboard} /> },

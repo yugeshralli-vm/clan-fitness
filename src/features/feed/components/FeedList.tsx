@@ -12,8 +12,13 @@ import type { ClanMemberOption } from "@/features/comments/components/CommentThr
 import type { CommentWithUser } from "@/features/comments/queries";
 import { ReactionBar } from "@/features/reactions/components/ReactionBar";
 import type { ReactionSummary } from "@/features/reactions/types";
+// Direct path, not the "@/features/system-posts" barrel — that barrel also exports server-only
+// queries (getSystemPostsForClan/generateWeeklyRecap), which would bundle the DB driver into the
+// client if imported from here (see the src/features/*/queries.ts "server-only" guard).
+import { SystemPostCard } from "@/features/system-posts/components/SystemPostCard";
+import type { SystemPostForFeed } from "@/features/system-posts";
 import { loadMoreFeed } from "../actions";
-import { describeCheckIn, formatDayLabel, getCheckInIcon, groupByDay, groupByUserAndDay } from "../group";
+import { describeCheckIn, formatDayLabel, getCheckInIcon, groupByDay, groupByUserAndDay, mergeFeedCards } from "../group";
 
 // Only needed after a photo tap — code-split so it's not part of the feed's initial bundle.
 const ImageLightbox = dynamic(() =>
@@ -25,6 +30,7 @@ export function FeedList({
   currentUserId,
   clanMembers,
   initialRows,
+  initialSystemPosts,
   initialReactions,
   initialComments,
   initialHasMore,
@@ -34,6 +40,7 @@ export function FeedList({
   currentUserId?: string | null;
   clanMembers?: ClanMemberOption[];
   initialRows: FeedRow[];
+  initialSystemPosts: SystemPostForFeed[];
   initialReactions: Record<string, ReactionSummary>;
   initialComments: Record<string, CommentWithUser[]>;
   initialHasMore: boolean;
@@ -75,7 +82,9 @@ export function FeedList({
     }
   }
 
-  const sections = groupByDay(groupByUserAndDay(rows));
+  // System posts aren't paginated (initialSystemPosts is a clan's whole history, fetched once —
+  // see getSystemPostsForClan), so they don't need their own state; only rows grows on "load more".
+  const sections = groupByDay(mergeFeedCards(groupByUserAndDay(rows), initialSystemPosts));
 
   return (
     <div className="flex flex-col gap-6">
@@ -85,7 +94,26 @@ export function FeedList({
             {formatDayLabel(section.day)}
           </h3>
           <ul className="flex flex-col gap-3">
-            {section.cards.map((group) => {
+            {section.cards.map((card) => {
+              if (card.kind === "systemPost") {
+                const postId = card.post.id;
+                return (
+                  <li key={postId}>
+                    <SystemPostCard
+                      post={card.post}
+                      clanId={clanId}
+                      currentUserId={currentUserId}
+                      clanMembers={clanMembers}
+                      reactionSummary={reactions[postId]}
+                      onReactionChange={(summary) => setReactions((prev) => ({ ...prev, [postId]: summary }))}
+                      comments={comments[postId] ?? []}
+                      onCommentsChange={(next) => setComments((prev) => ({ ...prev, [postId]: next }))}
+                    />
+                  </li>
+                );
+              }
+
+              const group = card;
               // The oldest entry, not the newest (group.entries[0]) — it's the only one of the
               // group guaranteed to stay the group's identity for the rest of the day. Keying on
               // the newest meant adding a new check-in type later that day silently orphaned any
@@ -138,7 +166,7 @@ export function FeedList({
                     </div>
                     <div className="flex items-center gap-2">
                       <ReactionBar
-                        checkInId={cardId}
+                        target={{ kind: "checkIn", id: cardId }}
                         clanId={clanId}
                         summary={reactions[cardId]}
                         onSummaryChange={(summary) =>
@@ -146,7 +174,7 @@ export function FeedList({
                         }
                       />
                       <CommentSheet
-                        checkInId={cardId}
+                        target={{ kind: "checkIn", id: cardId }}
                         clanId={clanId}
                         comments={comments[cardId] ?? []}
                         currentUserId={currentUserId}

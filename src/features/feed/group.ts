@@ -1,5 +1,6 @@
 import type { FeedRow } from "@/features/check-ins";
 import type { FoodCheckInValue, FoodStatus, GymCheckInValue, StepsCheckInValue } from "@/features/check-ins/types";
+import type { SystemPostForFeed } from "@/features/system-posts";
 
 export const TYPE_ICON: Record<string, string> = { gym: "💪", steps: "👟", food: "🥗" };
 
@@ -87,7 +88,7 @@ export function describeCheckIn(type: string, value: unknown, checkInId: string)
 export function groupByUserAndDay(rows: FeedRow[]) {
   const groups = new Map<
     string,
-    { user: FeedRow["user"]; day: string; latestAt: Date; entries: FeedRow["checkIn"][] }
+    { kind: "checkIn"; user: FeedRow["user"]; day: string; latestAt: Date; entries: FeedRow["checkIn"][] }
   >();
 
   for (const { checkIn, user } of rows) {
@@ -98,7 +99,7 @@ export function groupByUserAndDay(rows: FeedRow[]) {
       group.entries.push(checkIn);
       if (checkIn.createdAt > group.latestAt) group.latestAt = checkIn.createdAt;
     } else {
-      groups.set(key, { user, day, latestAt: checkIn.createdAt, entries: [checkIn] });
+      groups.set(key, { kind: "checkIn", user, day, latestAt: checkIn.createdAt, entries: [checkIn] });
     }
   }
 
@@ -107,14 +108,30 @@ export function groupByUserAndDay(rows: FeedRow[]) {
 
 export type DayGroup = ReturnType<typeof groupByUserAndDay>[number];
 
-export function groupByDay(groups: DayGroup[]) {
-  const sections: { day: string; cards: DayGroup[] }[] = [];
-  for (const group of groups) {
+export type SystemPostFeedItem = { kind: "systemPost"; day: string; latestAt: Date; post: SystemPostForFeed };
+
+export type FeedCard = DayGroup | SystemPostFeedItem;
+
+// Weekly system posts aren't paginated (see getSystemPostsForClan) — a clan's whole history is
+// merged in up front rather than dual-cursor-paginated alongside check-ins.
+export function mergeFeedCards(checkInGroups: DayGroup[], systemPosts: SystemPostForFeed[]): FeedCard[] {
+  const systemPostItems: SystemPostFeedItem[] = systemPosts.map((post) => ({
+    kind: "systemPost",
+    day: post.createdAt.toISOString().slice(0, 10),
+    latestAt: post.createdAt,
+    post,
+  }));
+  return [...checkInGroups, ...systemPostItems].sort((a, b) => b.latestAt.getTime() - a.latestAt.getTime());
+}
+
+export function groupByDay(cards: FeedCard[]) {
+  const sections: { day: string; cards: FeedCard[] }[] = [];
+  for (const card of cards) {
     const last = sections[sections.length - 1];
-    if (last && last.day === group.day) {
-      last.cards.push(group);
+    if (last && last.day === card.day) {
+      last.cards.push(card);
     } else {
-      sections.push({ day: group.day, cards: [group] });
+      sections.push({ day: card.day, cards: [card] });
     }
   }
   return sections;

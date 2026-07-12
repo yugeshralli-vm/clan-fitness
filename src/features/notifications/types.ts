@@ -14,7 +14,8 @@ export type NotificationType =
   | "missed_log"
   | "nudge"
   | "feedback"
-  | "broadcast";
+  | "broadcast"
+  | "weekly_recap";
 
 export type NotificationPayload = {
   type: NotificationType;

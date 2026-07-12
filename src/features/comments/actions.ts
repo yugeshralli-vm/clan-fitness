@@ -74,6 +74,70 @@ export async function addComment(
     comment: {
       id: row.id,
       checkInId: row.checkInId,
+      systemPostId: row.systemPostId,
+      userId: row.userId,
+      text: row.text,
+      createdAt: row.createdAt,
+      user: { id: user.id, name: user.name, avatarUrl: user.avatarUrl },
+    },
+  };
+}
+
+/** Commenting on a system post (see src/features/system-posts) — simpler than addComment since
+ * there's no check-in author to notify, but @mentions still work the same way. */
+export async function addSystemPostComment(
+  systemPostId: string,
+  clanId: string,
+  text: string,
+): Promise<{ comment: CommentWithUser } | { error: string }> {
+  const user = await getOrSyncCurrentUser();
+  if (!user) return { error: "Not signed in." };
+  if (!(await getClanMembership(user.id, clanId))) return { error: "Not a member of this clan." };
+
+  const trimmed = text.trim();
+  if (!trimmed) return { error: "Comment can't be empty." };
+  if (trimmed.length > COMMENT_MAX_RAW_LENGTH) {
+    return { error: "Comment is too long." };
+  }
+  const displayText = mentionsToPlainText(trimmed);
+  if (displayText.length > COMMENT_MAX_LENGTH) {
+    return { error: `Keep it under ${COMMENT_MAX_LENGTH} characters.` };
+  }
+
+  const [row] = await db
+    .insert(comments)
+    .values({ systemPostId, clanId, userId: user.id, text: trimmed })
+    .returning();
+
+  revalidatePath(`/clans/${clanId}`);
+
+  // Mention targets must be members of this same clan — the commenter's own membership was
+  // already verified above.
+  const members = await getClanMembers(clanId);
+  const memberIds = new Set(members.map((m) => m.user.id));
+  const mentionedIds = new Set(extractMentionedUserIds(trimmed).filter((id) => memberIds.has(id) && id !== user.id));
+
+  if (mentionedIds.size > 0) {
+    const url = `/clans/${clanId}`;
+    after(() =>
+      Promise.all(
+        [...mentionedIds].map((mentionedId) =>
+          notifyUser(mentionedId, {
+            type: "mention",
+            title: `${user.name} mentioned you in a comment`,
+            body: displayText,
+            url,
+          }),
+        ),
+      ),
+    );
+  }
+
+  return {
+    comment: {
+      id: row.id,
+      checkInId: row.checkInId,
+      systemPostId: row.systemPostId,
       userId: row.userId,
       text: row.text,
       createdAt: row.createdAt,

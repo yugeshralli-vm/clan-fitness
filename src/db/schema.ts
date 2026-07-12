@@ -111,13 +111,42 @@ export const checkIns = pgTable(
   ],
 );
 
+export const systemPostTypeEnum = pgEnum("system_post_type", ["weekly_recap"]);
+
+// A weekly recap posted as "Clan Fitness" itself, not a real user — topThree/wallOfShame store
+// only {userId, score}, not a name/avatar snapshot, since users are never deleted in this app
+// (unlike clans), so rendering can safely live-join `users` for current name/avatar.
+export const systemPosts = pgTable(
+  "system_posts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    clanId: uuid("clan_id")
+      .notNull()
+      .references(() => clans.id),
+    type: systemPostTypeEnum("type").notNull().default("weekly_recap"),
+    weekStart: timestamp("week_start").notNull(),
+    weekEnd: timestamp("week_end").notNull(),
+    topThree: jsonb("top_three").notNull().$type<{ userId: string; score: number }[]>(),
+    wallOfShame: jsonb("wall_of_shame").notNull().$type<{ userId: string; score: number }[]>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  // Lets the weekly cron job onConflictDoNothing to stay idempotent if it ever fires twice.
+  (t) => [uniqueIndex("system_posts_clan_type_week_idx").on(t.clanId, t.type, t.weekStart)],
+);
+
+// checkInId/systemPostId: exactly one of the two is set, enforced at the application layer (not a
+// DB CHECK constraint) — a reaction/comment targets either a real check-in or a system post, never
+// both/neither. Two partial unique indexes rather than one combined index across both nullable
+// columns: Postgres treats NULL <> NULL in unique indexes, so a single index spanning both columns
+// would stop enforcing uniqueness among check-in reactions entirely (every row has systemPostId
+// NULL, and NULLs never collide) — the same partial-index pattern is already used for
+// clan_memberships_one_admin_idx above.
 export const reactions = pgTable(
   "reactions",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    checkInId: uuid("check_in_id")
-      .notNull()
-      .references(() => checkIns.id),
+    checkInId: uuid("check_in_id").references(() => checkIns.id),
+    systemPostId: uuid("system_post_id").references(() => systemPosts.id),
     // The clan this reaction happened in — reactions are clan-scoped even though the underlying
     // check-in is visible across all of the owner's clans, so the same user can react to the same
     // check-in independently once per clan they share with the owner.
@@ -130,16 +159,22 @@ export const reactions = pgTable(
     emoji: text("emoji").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (t) => [uniqueIndex("reactions_check_in_clan_user_emoji_idx").on(t.checkInId, t.clanId, t.userId, t.emoji)],
+  (t) => [
+    uniqueIndex("reactions_check_in_clan_user_emoji_idx")
+      .on(t.checkInId, t.clanId, t.userId, t.emoji)
+      .where(sql`${t.checkInId} is not null`),
+    uniqueIndex("reactions_system_post_clan_user_emoji_idx")
+      .on(t.systemPostId, t.clanId, t.userId, t.emoji)
+      .where(sql`${t.systemPostId} is not null`),
+  ],
 );
 
 export const comments = pgTable(
   "comments",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    checkInId: uuid("check_in_id")
-      .notNull()
-      .references(() => checkIns.id),
+    checkInId: uuid("check_in_id").references(() => checkIns.id),
+    systemPostId: uuid("system_post_id").references(() => systemPosts.id),
     // Same clan-scoping rationale as reactions.clanId above.
     clanId: uuid("clan_id")
       .notNull()
@@ -177,6 +212,7 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "nudge",
   "feedback",
   "broadcast",
+  "weekly_recap",
 ]);
 
 export const notifications = pgTable(

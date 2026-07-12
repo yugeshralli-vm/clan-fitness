@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { clanMemberships, clans, comments, reactions } from "@/db/schema";
+import { clanMemberships, clans, comments, reactions, systemPosts } from "@/db/schema";
 import { getUsersLoggedToday } from "@/features/check-ins";
 import { hasBeenNudgedToday } from "@/features/notifications/queries";
 import { notifyUser } from "@/features/notifications/send";
@@ -133,9 +133,12 @@ export async function deleteClan(
   // No transaction (the Neon HTTP driver doesn't support them, same as makeAdmin below) — delete
   // children before the parent row, since none of these FKs cascade. checkIns are untouched:
   // they're personal records with no clanId of their own (see schema.ts), so members keep their
-  // own log history — only this clan's shared reactions/comments/membership rows go away.
+  // own log history — only this clan's shared reactions/comments/membership/system-post rows go
+  // away. systemPosts must go after reactions/comments (which can FK to it) and before
+  // clanMemberships/clans (which it FKs to).
   await db.delete(reactions).where(eq(reactions.clanId, clanId));
   await db.delete(comments).where(eq(comments.clanId, clanId));
+  await db.delete(systemPosts).where(eq(systemPosts.clanId, clanId));
   await db.delete(clanMemberships).where(eq(clanMemberships.clanId, clanId));
   await db.delete(clans).where(eq(clans.id, clanId));
 

@@ -2,13 +2,14 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/shared/Avatar";
-import { addComment, deleteComment } from "../actions";
+import { addComment, addSystemPostComment, deleteComment } from "../actions";
 import { buildMentionMarkup, parseCommentSegments } from "../mentions";
 import type { ResolvedMention } from "../mentions";
 import type { CommentWithUser } from "../queries";
 import { COMMENT_MAX_LENGTH } from "../types";
 
 export type ClanMemberOption = { id: string; name: string; avatarUrl: string | null };
+export type CommentTarget = { kind: "checkIn"; id: string } | { kind: "systemPost"; id: string };
 
 const MENTION_TRIGGER = /(?:^|\s)@([^\s@]*)$/;
 const MAX_MENTION_SUGGESTIONS = 5;
@@ -38,14 +39,14 @@ function diffRange(oldText: string, newText: string) {
 }
 
 export function CommentThread({
-  checkInId,
+  target,
   clanId,
   comments,
   currentUserId,
   clanMembers = [],
   onCommentsChange,
 }: {
-  checkInId: string;
+  target: CommentTarget;
   clanId: string;
   comments: CommentWithUser[];
   currentUserId?: string | null;
@@ -143,7 +144,10 @@ export function CommentThread({
     const rawValue = buildMentionMarkup(text, mentionsRef.current);
 
     startTransition(async () => {
-      const result = await addComment(checkInId, clanId, rawValue);
+      const result =
+        target.kind === "checkIn"
+          ? await addComment(target.id, clanId, rawValue)
+          : await addSystemPostComment(target.id, clanId, rawValue);
       if ("error" in result) {
         setError(result.error);
         return;

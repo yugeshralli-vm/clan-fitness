@@ -3,19 +3,21 @@
 import { useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/shared/Avatar";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { toggleReaction } from "../actions";
+import { toggleReaction, toggleSystemPostReaction } from "../actions";
 import { REACTION_EMOJIS } from "../types";
 import type { ReactionSummary } from "../types";
+
+export type ReactionTarget = { kind: "checkIn"; id: string } | { kind: "systemPost"; id: string };
 
 const LONG_PRESS_MS = 450;
 
 export function ReactionBar({
-  checkInId,
+  target,
   clanId,
   summary,
   onSummaryChange,
 }: {
-  checkInId: string;
+  target: ReactionTarget;
   clanId: string;
   summary?: ReactionSummary;
   onSummaryChange: (next: ReactionSummary) => void;
@@ -43,7 +45,10 @@ export function ReactionBar({
   function handleClick(emoji: string) {
     if (longPressFired.current) return;
     startTransition(async () => {
-      const result = await toggleReaction(checkInId, clanId, emoji);
+      const result =
+        target.kind === "checkIn"
+          ? await toggleReaction(target.id, clanId, emoji)
+          : await toggleSystemPostReaction(target.id, clanId, emoji);
       if ("summary" in result) onSummaryChange(result.summary);
     });
   }

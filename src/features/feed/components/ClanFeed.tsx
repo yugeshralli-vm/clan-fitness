@@ -1,9 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
-import { getCommentsForCheckIns } from "@/features/comments";
+import { getCommentsForCheckIns, getCommentsForSystemPosts } from "@/features/comments";
 import { FEED_PAGE_SIZE, getCheckInById, getClanFeed } from "@/features/check-ins";
 import { getClanMembers } from "@/features/clans";
-import { getReactionsForCheckIns } from "@/features/reactions";
+import { getReactionsForCheckIns, getReactionsForSystemPosts } from "@/features/reactions";
+import { getSystemPostsForClan } from "@/features/system-posts";
 import { FeedList } from "./FeedList";
 
 export async function ClanFeed({
@@ -16,10 +17,13 @@ export async function ClanFeed({
   members?: Awaited<ReturnType<typeof getClanMembers>>;
 }) {
   const { userId } = await auth();
-  // Doesn't depend on `rows`, so kick it off immediately instead of waiting behind
-  // getCheckInById/getClanFeed below — unless the caller already fetched it (e.g. the clan page
-  // needs the member list/count anyway), in which case reuse that instead of a second query.
+  // Neither depends on `rows`, so kick both off immediately instead of waiting behind
+  // getCheckInById/getClanFeed below — unless the caller already fetched members (e.g. the clan
+  // page needs the member list/count anyway), in which case reuse that instead of a second query.
+  // System posts aren't paginated (at most one per week — see getSystemPostsForClan), so a clan's
+  // whole history is fetched up front rather than dual-cursor-paginated alongside check-ins.
   const membersPromise = providedMembers ? Promise.resolve(providedMembers) : getClanMembers(clanId);
+  const systemPostsPromise = getSystemPostsForClan(clanId);
 
   // A notification can deep-link to a check-in older than what the default (latest) page would
   // include. Anchor the very first page just after it instead, so it's guaranteed to be present
@@ -35,7 +39,9 @@ export async function ClanFeed({
     rows = await getClanFeed(clanId);
   }
 
-  if (rows.length === 0) {
+  const systemPosts = await systemPostsPromise;
+
+  if (rows.length === 0 && systemPosts.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-surface-border py-10 text-center">
         <p className="text-sm text-foreground-secondary">No check-ins yet. Someone&apos;s got to go first 👀</p>
@@ -47,9 +53,12 @@ export async function ClanFeed({
   }
 
   const checkInIds = rows.map((row) => row.checkIn.id);
-  const [reactions, comments, members] = await Promise.all([
+  const systemPostIds = systemPosts.map((post) => post.id);
+  const [reactions, comments, systemPostReactions, systemPostComments, members] = await Promise.all([
     userId ? getReactionsForCheckIns(checkInIds, clanId, userId) : Promise.resolve({}),
     getCommentsForCheckIns(checkInIds, clanId),
+    userId ? getReactionsForSystemPosts(systemPostIds, clanId, userId) : Promise.resolve({}),
+    getCommentsForSystemPosts(systemPostIds, clanId),
     membersPromise,
   ]);
   const clanMembers = members.map((m) => ({ id: m.user.id, name: m.user.name, avatarUrl: m.user.avatarUrl }));
@@ -60,8 +69,9 @@ export async function ClanFeed({
       currentUserId={userId}
       clanMembers={clanMembers}
       initialRows={rows}
-      initialReactions={reactions}
-      initialComments={comments}
+      initialSystemPosts={systemPosts}
+      initialReactions={{ ...reactions, ...systemPostReactions }}
+      initialComments={{ ...comments, ...systemPostComments }}
       initialHasMore={rows.length === FEED_PAGE_SIZE}
       highlightCheckInId={highlightCheckInId}
     />
