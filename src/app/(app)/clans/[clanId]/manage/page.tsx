@@ -4,6 +4,7 @@ import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { getAppConfig } from "@/features/admin";
 import {
   computeLeaderboard,
+  daysInMonth,
   getUsersLoggedToday,
   startOfMonth,
   startOfToday,
@@ -55,7 +56,7 @@ export default async function ManageClanPage({ params }: { params: Promise<{ cla
   // genuine historical snapshot (as it stood before anything logged today), not a mix of
   // yesterday's counts with today's live streak.
   const now = new Date();
-  const daysInCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
+  const daysInCurrentMonth = daysInMonth(now);
 
   const [todayBoard, yesterdayBoard, weekBoard, monthBoard] = await Promise.all([
     computeLeaderboard(members, config, stepsGoals, gymGoals, { start: startOfToday(now), end: now }, 1),

@@ -3,22 +3,20 @@ import "server-only";
 import { and, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { checkIns, clanMemberships, users } from "@/db/schema";
+import { daysInIstMonth, istDayKey, startOfIstDay, startOfIstMonth } from "@/lib/ist-date";
 import type { CheckInType, StepsCheckInValue } from "./types";
 
-export const FEED_PAGE_SIZE = 20;
-
-function startOfDay(date = new Date()) {
-  const start = new Date(date);
-  start.setUTCHours(0, 0, 0, 0);
-  return start;
-}
+// Busy clans can generate a check-in every few minutes across members — 20 covered only a couple
+// hours of combined activity, so an older post (with its reactions/comments) would drop off the
+// default view well before anyone thought to scroll for it.
+export const FEED_PAGE_SIZE = 50;
 
 export function startOfToday(now = new Date()) {
-  return startOfDay(now);
+  return startOfIstDay(now);
 }
 
 export function startOfYesterday(now = new Date()) {
-  return new Date(startOfDay(now).getTime() - 24 * 60 * 60 * 1000);
+  return new Date(startOfIstDay(now).getTime() - 24 * 60 * 60 * 1000);
 }
 
 // Sunday 08:00 IST (=02:30 UTC) — the app's week boundary. IST has no DST, so this fixed UTC
@@ -33,7 +31,11 @@ export function startOfWeek(now = new Date()) {
 }
 
 export function startOfMonth(now = new Date()) {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+  return startOfIstMonth(now);
+}
+
+export function daysInMonth(now = new Date()) {
+  return daysInIstMonth(now);
 }
 
 // A check-in has no clanId of its own — it's visible in a clan's feed whenever its author is
@@ -165,13 +167,13 @@ export async function getWeeklyStepsTotals(userIds: string[], { start, end = new
 // now") are unaffected. Callers computing a past week's streak (see getStepGoalStreaks) pass the
 // end of that week instead, so the walk-backward never considers days beyond it.
 function streakFromDayKeys(dayKeys: Set<string>, asOf: Date = new Date()) {
-  const cursor = startOfDay(asOf);
-  if (!dayKeys.has(cursor.toISOString().slice(0, 10))) {
+  const cursor = startOfIstDay(asOf);
+  if (!dayKeys.has(istDayKey(cursor))) {
     cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
 
   let streak = 0;
-  while (dayKeys.has(cursor.toISOString().slice(0, 10))) {
+  while (dayKeys.has(istDayKey(cursor))) {
     streak++;
     cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
@@ -184,7 +186,7 @@ export async function getUserStreak(userId: string, type: CheckInType) {
     .from(checkIns)
     .where(and(eq(checkIns.userId, userId), eq(checkIns.type, type)));
 
-  return streakFromDayKeys(new Set(rows.map((row) => row.createdAt.toISOString().slice(0, 10))));
+  return streakFromDayKeys(new Set(rows.map((row) => istDayKey(row.createdAt))));
 }
 
 export async function getStreaks(userIds: string[], type: CheckInType) {
@@ -199,7 +201,7 @@ export async function getStreaks(userIds: string[], type: CheckInType) {
   const dayKeysByUser = new Map<string, Set<string>>();
   for (const row of rows) {
     const dayKeys = dayKeysByUser.get(row.userId) ?? new Set<string>();
-    dayKeys.add(row.createdAt.toISOString().slice(0, 10));
+    dayKeys.add(istDayKey(row.createdAt));
     dayKeysByUser.set(row.userId, dayKeys);
   }
 
@@ -213,7 +215,7 @@ export async function getStreaks(userIds: string[], type: CheckInType) {
 // logging a check-in isn't enough on its own. dailyTargetsByUser must already have a default
 // filled in per user; this function doesn't know about any fallback target. asOf bounds the rows
 // to createdAt < asOf AND seeds the streak walk there (both are required together — otherwise a
-// check-in logged just after asOf, on the same UTC calendar day, would wrongly count toward a
+// check-in logged just after asOf, on the same IST calendar day, would wrongly count toward a
 // streak computed "as of" that day).
 export async function getStepGoalStreaks(
   userIds: string[],
@@ -233,7 +235,7 @@ export async function getStepGoalStreaks(
     const { count } = row.value as StepsCheckInValue;
     if (count < (dailyTargetsByUser.get(row.userId) ?? Infinity)) continue;
     const dayKeys = dayKeysByUser.get(row.userId) ?? new Set<string>();
-    dayKeys.add(row.createdAt.toISOString().slice(0, 10));
+    dayKeys.add(istDayKey(row.createdAt));
     dayKeysByUser.set(row.userId, dayKeys);
   }
 

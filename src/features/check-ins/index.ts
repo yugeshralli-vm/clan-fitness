@@ -2,6 +2,7 @@ export { logDailyCheckIn } from "./actions";
 export { computeLeaderboard } from "./leaderboard";
 export type { LeaderboardEntry } from "./leaderboard";
 export {
+  daysInMonth,
   FEED_PAGE_SIZE,
   getCheckInById,
   getClanFeed,

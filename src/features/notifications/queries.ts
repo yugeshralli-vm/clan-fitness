@@ -3,14 +3,9 @@ import "server-only";
 import { and, count, desc, eq, gte, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { notifications, pushSubscriptions } from "@/db/schema";
+import { startOfIstDay } from "@/lib/ist-date";
 
 export type NotificationRow = typeof notifications.$inferSelect;
-
-function startOfToday() {
-  const date = new Date();
-  date.setUTCHours(0, 0, 0, 0);
-  return date;
-}
 
 /** One nudge per recipient per day, regardless of who sends it — a cheap spam guard reusing the
  * existing notifications table instead of a dedicated one. */
@@ -19,7 +14,7 @@ export async function hasBeenNudgedToday(userId: string) {
     .select({ count: count() })
     .from(notifications)
     .where(
-      and(eq(notifications.userId, userId), eq(notifications.type, "nudge"), gte(notifications.createdAt, startOfToday())),
+      and(eq(notifications.userId, userId), eq(notifications.type, "nudge"), gte(notifications.createdAt, startOfIstDay())),
     );
   return (row?.count ?? 0) > 0;
 }
