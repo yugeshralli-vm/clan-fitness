@@ -4,6 +4,18 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { getUserClans } from "@/features/clans";
 
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "Clan Fitness",
+  description:
+    "Track gym days, steps, and food with a small group of people who'll actually notice if you skip.",
+  url: "https://www.clanfitness.in",
+  applicationCategory: "HealthApplication",
+  operatingSystem: "Web, iOS, Android",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+};
+
 export default async function HomePage() {
   const { userId } = await auth();
 
@@ -14,6 +26,7 @@ export default async function HomePage() {
 
   return (
     <main className="flex flex-1 flex-col">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       <section className="flex min-h-[80vh] flex-col items-center justify-center gap-6 px-6 text-center">
         {/* eslint-disable-next-line @next/next/no-img-element -- SVG logo, no benefit from next/image's raster pipeline */}
         <img src="/logo/clan-fitness-logo.svg" alt="Clan Fitness" className="h-16 w-auto" />

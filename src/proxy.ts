@@ -16,6 +16,12 @@ const isPublicRoute = createRouteMatcher([
   "/icon-512",
   "/icon-512-maskable",
   "/apple-icon",
+  // Search-engine crawlers and link-preview bots (which unfurl og:image) have no Clerk session —
+  // .txt/.xml aren't excluded by the matcher below, and /opengraph-image is extensionless like the
+  // icon routes above, so all three need an explicit exemption or they'd 404/redirect for crawlers.
+  "/robots.txt",
+  "/sitemap.xml",
+  "/opengraph-image",
   // Google's Digital Asset Links verifier fetches this unauthenticated to confirm the TWA
   // (Play Store wrapper) owns this domain — a redirect to sign-in here fails TWA verification.
   "/.well-known/assetlinks.json",

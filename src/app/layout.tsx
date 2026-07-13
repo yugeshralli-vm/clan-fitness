@@ -18,9 +18,25 @@ const satoshi = localFont({
   ],
 });
 
+const DESCRIPTION =
+  "Track gym days, steps, and food with a small group of people who'll actually notice if you skip.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.clanfitness.in"),
   title: "Clan Fitness",
-  description: "Track gym, steps, and food with your accountability group.",
+  description: DESCRIPTION,
+  openGraph: {
+    title: "Clan Fitness",
+    description: DESCRIPTION,
+    url: "https://www.clanfitness.in",
+    siteName: "Clan Fitness",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Clan Fitness",
+    description: DESCRIPTION,
+  },
   appleWebApp: {
     title: "Clan Fitness",
     statusBarStyle: "black-translucent",
