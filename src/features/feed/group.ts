@@ -1,6 +1,7 @@
 import type { FeedRow } from "@/features/check-ins";
 import type { FoodCheckInValue, FoodStatus, GymCheckInValue, StepsCheckInValue } from "@/features/check-ins/types";
 import type { SystemPostForFeed } from "@/features/system-posts";
+import { istDayKey } from "@/lib/ist-date";
 
 export const TYPE_ICON: Record<string, string> = { gym: "💪", steps: "👟", food: "🥗" };
 
@@ -92,7 +93,7 @@ export function groupByUserAndDay(rows: FeedRow[]) {
   >();
 
   for (const { checkIn, user } of rows) {
-    const day = checkIn.createdAt.toISOString().slice(0, 10);
+    const day = istDayKey(checkIn.createdAt);
     const key = `${user.id}:${day}`;
     const group = groups.get(key);
     if (group) {
@@ -117,7 +118,7 @@ export type FeedCard = DayGroup | SystemPostFeedItem;
 export function mergeFeedCards(checkInGroups: DayGroup[], systemPosts: SystemPostForFeed[]): FeedCard[] {
   const systemPostItems: SystemPostFeedItem[] = systemPosts.map((post) => ({
     kind: "systemPost",
-    day: post.createdAt.toISOString().slice(0, 10),
+    day: istDayKey(post.createdAt),
     latestAt: post.createdAt,
     post,
   }));
@@ -139,8 +140,8 @@ export function groupByDay(cards: FeedCard[]) {
 
 export function formatDayLabel(day: string) {
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const today = istDayKey(now);
+  const yesterday = istDayKey(new Date(now.getTime() - 24 * 60 * 60 * 1000));
   if (day === today) return "Today";
   if (day === yesterday) return "Yesterday";
   return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", { month: "long", day: "numeric" });
