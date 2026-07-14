@@ -129,7 +129,18 @@ export function DailyLogForm({
       }}
       className="flex flex-col gap-6"
     >
-      <Input name="thought" placeholder="What's on your mind?" maxLength={200} defaultValue={existingThought} />
+      <div className="flex flex-col gap-2">
+        <label htmlFor="thought" className="font-semibold text-foreground">
+          Thought
+        </label>
+        <Input
+          id="thought"
+          name="thought"
+          placeholder="What's on your mind?"
+          maxLength={200}
+          defaultValue={existingThought}
+        />
+      </div>
 
       <div className="flex flex-col gap-2">
         <h2 className="font-semibold text-foreground">Gym</h2>
