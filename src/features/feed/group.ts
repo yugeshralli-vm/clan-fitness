@@ -1,9 +1,15 @@
 import type { FeedRow } from "@/features/check-ins";
-import type { FoodCheckInValue, FoodStatus, GymCheckInValue, StepsCheckInValue } from "@/features/check-ins/types";
+import type {
+  FoodCheckInValue,
+  FoodStatus,
+  GymCheckInValue,
+  StepsCheckInValue,
+  ThoughtCheckInValue,
+} from "@/features/check-ins/types";
 import type { SystemPostForFeed } from "@/features/system-posts";
 import { userDayKey } from "@/lib/timezone-date";
 
-export const TYPE_ICON: Record<string, string> = { gym: "💪", steps: "👟", food: "🥗" };
+export const TYPE_ICON: Record<string, string> = { gym: "💪", steps: "👟", food: "🥗", thought: "💭" };
 
 // A pool per status rather than one fixed line each, so the feed doesn't read like a template —
 // picked deterministically per check-in (see pickDeterministic) so the same entry doesn't change
@@ -80,6 +86,12 @@ export function describeCheckIn(type: string, value: unknown, checkInId: string)
       if (!status) return note ? `Shared a photo — "${note}"` : "Shared a photo";
       const label = pickDeterministic(FOOD_STATUS_PHRASES[status], checkInId);
       return note ? `${label} — "${note}"` : label;
+    }
+    // Rendered as a title above the rest of the card in FeedList.tsx, not through this generic
+    // per-entry caption path — this case exists as a fallback/for consistency only.
+    case "thought": {
+      const { text } = value as ThoughtCheckInValue;
+      return text;
     }
     default:
       return "Checked in";

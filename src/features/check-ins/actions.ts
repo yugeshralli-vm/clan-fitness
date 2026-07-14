@@ -82,11 +82,36 @@ export async function logDailyCheckIn(
   const hasPhoto = photoUrls.length > 0;
 
   const workedOut = formData.get("workedOut") === "on";
+  const thought = String(formData.get("thought") ?? "").trim().slice(0, 200) || undefined;
   const newlyLoggedTypes: CheckInType[] = [];
   // Every one of today's check-ins for this user (pre-existing or just written), so the
   // notification anchor below can be computed as the oldest of them — see the comment on
   // notifyClansOfCheckIn for why it must be oldest, not whichever this submission touched last.
   const todaysCheckIns: { id: string; createdAt: Date }[] = [];
+
+  // No delete-when-empty here (unlike gym/food's note fields, which just clear in place) — an
+  // already-posted thought may already have reactions/comments attached, so resubmitting the form
+  // with the thought field cleared deliberately leaves the existing one alone rather than deleting
+  // the row. A real "remove my thought" affordance would need cascade handling; not in scope yet.
+  if (thought) {
+    const existingThought = await getTodaysCheckIn(user.id, "thought", user.timezone);
+    if (existingThought) {
+      await db.update(checkIns).set({ value: { text: thought } }).where(eq(checkIns.id, existingThought.id));
+      todaysCheckIns.push({ id: existingThought.id, createdAt: existingThought.createdAt });
+    } else {
+      const [row] = await db
+        .insert(checkIns)
+        .values({
+          userId: user.id,
+          type: "thought",
+          value: { text: thought },
+          visibility: "public_to_clan",
+        })
+        .returning({ id: checkIns.id, createdAt: checkIns.createdAt });
+      newlyLoggedTypes.push("thought");
+      todaysCheckIns.push(row);
+    }
+  }
 
   const existingGym = await getTodaysCheckIn(user.id, "gym", user.timezone);
   if (workedOut || existingGym) {

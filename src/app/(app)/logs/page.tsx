@@ -8,7 +8,12 @@ import {
   getUserWeeklyCount,
 } from "@/features/check-ins";
 import { getFoodPhotoUrls } from "@/features/check-ins/types";
-import type { FoodCheckInValue, GymCheckInValue, StepsCheckInValue } from "@/features/check-ins/types";
+import type {
+  FoodCheckInValue,
+  GymCheckInValue,
+  StepsCheckInValue,
+  ThoughtCheckInValue,
+} from "@/features/check-ins/types";
 import { getUserGoals } from "@/features/goals";
 import { getOrSyncCurrentUser } from "@/lib/current-user";
 
@@ -16,18 +21,21 @@ export default async function LogsPage() {
   const user = await getOrSyncCurrentUser();
   if (!user) redirect("/sign-in");
 
-  const [gymCheckIn, stepsCheckIn, foodCheckIn, gymStreak, weeklyGymCount, goals] = await Promise.all([
-    getTodaysCheckIn(user.id, "gym", user.timezone),
-    getTodaysCheckIn(user.id, "steps", user.timezone),
-    getTodaysCheckIn(user.id, "food", user.timezone),
-    getUserStreak(user.id, "gym", user.timezone),
-    getUserWeeklyCount(user.id, "gym", user.timezone),
-    getUserGoals(user.id),
-  ]);
+  const [gymCheckIn, stepsCheckIn, foodCheckIn, thoughtCheckIn, gymStreak, weeklyGymCount, goals] =
+    await Promise.all([
+      getTodaysCheckIn(user.id, "gym", user.timezone),
+      getTodaysCheckIn(user.id, "steps", user.timezone),
+      getTodaysCheckIn(user.id, "food", user.timezone),
+      getTodaysCheckIn(user.id, "thought", user.timezone),
+      getUserStreak(user.id, "gym", user.timezone),
+      getUserWeeklyCount(user.id, "gym", user.timezone),
+      getUserGoals(user.id),
+    ]);
 
   const gymValue = gymCheckIn?.value as GymCheckInValue | undefined;
   const stepsValue = stepsCheckIn?.value as StepsCheckInValue | undefined;
   const foodValue = foodCheckIn?.value as FoodCheckInValue | undefined;
+  const thoughtValue = thoughtCheckIn?.value as ThoughtCheckInValue | undefined;
   const gymGoal = goals.find((g) => g.type === "gym");
   const stepsGoal = goals.find((g) => g.type === "steps");
   const weeklyGymTarget = gymGoal?.targetValue ?? 4;
@@ -93,7 +101,8 @@ export default async function LogsPage() {
         currentFoodStatus={foodValue?.status}
         existingFoodNote={foodValue?.note}
         existingPhotoUrls={getFoodPhotoUrls(foodValue)}
-        hasLoggedToday={!!(gymCheckIn || stepsCheckIn || foodCheckIn)}
+        existingThought={thoughtValue?.text}
+        hasLoggedToday={!!(gymCheckIn || stepsCheckIn || foodCheckIn || thoughtCheckIn)}
       />
     </div>
   );

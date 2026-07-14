@@ -13,7 +13,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export const checkInTypeEnum = pgEnum("check_in_type", ["gym", "steps", "food"]);
+export const checkInTypeEnum = pgEnum("check_in_type", ["gym", "steps", "food", "thought"]);
 export const goalPeriodEnum = pgEnum("goal_period", ["daily", "weekly"]);
 export const clanRoleEnum = pgEnum("clan_role", ["admin", "member"]);
 export const checkInVisibilityEnum = pgEnum("check_in_visibility", [

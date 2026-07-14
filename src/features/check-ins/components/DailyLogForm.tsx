@@ -40,6 +40,7 @@ export function DailyLogForm({
   currentFoodStatus,
   existingFoodNote,
   existingPhotoUrls,
+  existingThought,
   hasLoggedToday,
 }: {
   alreadyWorkedOut: boolean;
@@ -49,6 +50,7 @@ export function DailyLogForm({
   currentFoodStatus?: FoodStatus;
   existingFoodNote?: string;
   existingPhotoUrls?: string[];
+  existingThought?: string;
   hasLoggedToday: boolean;
 }) {
   const [state, action, pending] = useActionState(logDailyCheckIn, undefined);
@@ -127,6 +129,8 @@ export function DailyLogForm({
       }}
       className="flex flex-col gap-6"
     >
+      <Input name="thought" placeholder="What's on your mind?" maxLength={200} defaultValue={existingThought} />
+
       <div className="flex flex-col gap-2">
         <h2 className="font-semibold text-foreground">Gym</h2>
         {alreadyWorkedOut ? (

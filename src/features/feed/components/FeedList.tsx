@@ -6,7 +6,7 @@ import { Avatar } from "@/components/shared/Avatar";
 import { PhotoCarousel } from "@/components/ui/photo-carousel";
 import type { FeedRow } from "@/features/check-ins";
 import { getFoodPhotoUrls } from "@/features/check-ins/types";
-import type { FoodCheckInValue } from "@/features/check-ins/types";
+import type { FoodCheckInValue, ThoughtCheckInValue } from "@/features/check-ins/types";
 import { CommentSheet } from "@/features/comments/components/CommentSheet";
 import type { ClanMemberOption } from "@/features/comments/components/CommentThread";
 import type { CommentWithUser } from "@/features/comments/queries";
@@ -125,6 +125,10 @@ export function FeedList({
               // reactions/comments already made against the day's card.
               const cardId = group.entries[group.entries.length - 1].id;
               const isHighlighted = highlighted && cardId === highlightCheckInId;
+              // Rendered as a title above the rest of the card, not as just another line in the
+              // entries loop below — pulled out here and excluded from that loop.
+              const thoughtEntry = group.entries.find((checkIn) => checkIn.type === "thought");
+              const otherEntries = group.entries.filter((checkIn) => checkIn.type !== "thought");
               return (
                 <li
                   key={group.user.id}
@@ -149,8 +153,13 @@ export function FeedList({
                         })}
                       </time>
                     </div>
+                    {thoughtEntry && (
+                      <p className="text-base font-semibold text-foreground">
+                        {(thoughtEntry.value as ThoughtCheckInValue).text}
+                      </p>
+                    )}
                     <div className="flex flex-col gap-1">
-                      {group.entries.map((checkIn) => {
+                      {otherEntries.map((checkIn) => {
                         const photoUrls =
                           checkIn.type === "food"
                             ? getFoodPhotoUrls(checkIn.value as FoodCheckInValue)
