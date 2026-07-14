@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { compressImage } from "@/lib/compress-image";
 import { useActionToast } from "@/lib/use-action-toast";
 import { logDailyCheckIn } from "../actions";
@@ -136,7 +137,7 @@ export function DailyLogForm({
         {alreadyWorkedOut ? (
           <>
             <p className="text-sm text-foreground-secondary">You already logged a workout today. 🔥</p>
-            <Input
+            <Textarea
               name="gymNote"
               placeholder="Update note (e.g. leg day)"
               maxLength={200}
@@ -149,7 +150,7 @@ export function DailyLogForm({
               <input type="checkbox" name="workedOut" className="h-5 w-5 accent-accent" />
               I worked out today 💪
             </label>
-            <Input name="gymNote" placeholder="Optional note (e.g. leg day)" maxLength={200} />
+            <Textarea name="gymNote" placeholder="Optional note (e.g. leg day)" maxLength={200} />
           </>
         )}
       </div>
@@ -189,7 +190,7 @@ export function DailyLogForm({
             </label>
           ))}
         </div>
-        <Input
+        <Textarea
           name="foodNote"
           placeholder="Optional note (e.g. meal prepped)"
           maxLength={200}
@@ -281,7 +282,7 @@ export function DailyLogForm({
           </h2>
           <span className="text-xs text-foreground-tertiary">Optional</span>
         </div>
-        <Input name="thought" placeholder="What's on your mind?" maxLength={200} defaultValue={existingThought} />
+        <Textarea name="thought" placeholder="What's on your mind?" maxLength={200} defaultValue={existingThought} />
       </div>
 
       {anyPhotoErrors && (
