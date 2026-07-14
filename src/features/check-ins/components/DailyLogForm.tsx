@@ -129,21 +129,10 @@ export function DailyLogForm({
       }}
       className="flex flex-col gap-6"
     >
-      <div className="flex flex-col gap-2">
-        <label htmlFor="thought" className="font-semibold text-foreground">
-          Thought
-        </label>
-        <Input
-          id="thought"
-          name="thought"
-          placeholder="What's on your mind?"
-          maxLength={200}
-          defaultValue={existingThought}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <h2 className="font-semibold text-foreground">Gym</h2>
+      <div className="flex flex-col gap-3 rounded-xl border border-surface-border bg-surface p-5">
+        <h2 className="flex items-center gap-2 font-semibold text-foreground">
+          <span aria-hidden>💪</span> Gym
+        </h2>
         {alreadyWorkedOut ? (
           <>
             <p className="text-sm text-foreground-secondary">You already logged a workout today. 🔥</p>
@@ -165,18 +154,24 @@ export function DailyLogForm({
         )}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h2 className="font-semibold text-foreground">Steps</h2>
-        {dailyStepsTarget !== undefined && (
-          <p className="text-xs text-foreground-tertiary">
-            Goal: {dailyStepsTarget.toLocaleString("en-US")} steps/day
-          </p>
-        )}
+      <div className="flex flex-col gap-3 rounded-xl border border-surface-border bg-surface p-5">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 font-semibold text-foreground">
+            <span aria-hidden>👟</span> Steps
+          </h2>
+          {dailyStepsTarget !== undefined && (
+            <span className="text-xs text-foreground-tertiary">
+              Goal: {dailyStepsTarget.toLocaleString("en-US")}/day
+            </span>
+          )}
+        </div>
         <Input name="count" type="number" min={0} defaultValue={todaysSteps} placeholder="Steps today" />
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h2 className="font-semibold text-foreground">Nutrition</h2>
+      <div className="flex flex-col gap-3 rounded-xl border border-surface-border bg-surface p-5">
+        <h2 className="flex items-center gap-2 font-semibold text-foreground">
+          <span aria-hidden>🥗</span> Nutrition
+        </h2>
         {currentFoodStatus && (
           <p className="text-sm text-foreground-secondary">You already logged nutrition today.</p>
         )}
@@ -202,12 +197,17 @@ export function DailyLogForm({
         />
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h2 className="font-semibold text-foreground">Photo</h2>
+      <div className="flex flex-col gap-3 rounded-xl border border-surface-border bg-surface p-5">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 font-semibold text-foreground">
+            <span aria-hidden>📷</span> Photo
+          </h2>
+          <span className="text-xs text-foreground-tertiary">Optional</span>
+        </div>
         <label htmlFor="photos" className="text-xs text-foreground-tertiary">
           {photos.length > 0
             ? `${photos.length}/${MAX_PHOTOS} photos`
-            : "Optional photos — saves on their own, no other answer needed"}
+            : "Saves on their own, no other answer needed"}
         </label>
         {photos.length > 0 && (
           <div className="flex flex-wrap gap-2 pb-3">
@@ -272,6 +272,16 @@ export function DailyLogForm({
         {uploadedUrls.map((url) => (
           <input key={url} type="hidden" name="photoUrls" value={url} />
         ))}
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-xl border border-surface-border bg-surface p-5">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 font-semibold text-foreground">
+            <span aria-hidden>💭</span> Thought
+          </h2>
+          <span className="text-xs text-foreground-tertiary">Optional</span>
+        </div>
+        <Input name="thought" placeholder="What's on your mind?" maxLength={200} defaultValue={existingThought} />
       </div>
 
       {anyPhotoErrors && (
