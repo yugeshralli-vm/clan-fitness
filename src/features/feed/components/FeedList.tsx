@@ -19,7 +19,15 @@ import { toast } from "@/components/ui/toast";
 import { SystemPostCard } from "@/features/system-posts/components/SystemPostCard";
 import type { SystemPostForFeed } from "@/features/system-posts";
 import { loadMoreFeed } from "../actions";
-import { describeCheckIn, formatDayLabel, getCheckInIcon, groupByDay, groupByUserAndDay, mergeFeedCards } from "../group";
+import {
+  dedupeEntriesForDisplay,
+  describeCheckIn,
+  formatDayLabel,
+  getCheckInIcon,
+  groupByDay,
+  groupByUserAndDay,
+  mergeFeedCards,
+} from "../group";
 
 // Only needed after a photo tap — code-split so it's not part of the feed's initial bundle.
 const ImageLightbox = dynamic(() =>
@@ -127,8 +135,9 @@ export function FeedList({
               const isHighlighted = highlighted && cardId === highlightCheckInId;
               // Rendered as a title above the rest of the card, not as just another line in the
               // entries loop below — pulled out here and excluded from that loop.
-              const thoughtEntry = group.entries.find((checkIn) => checkIn.type === "thought");
-              const otherEntries = group.entries.filter((checkIn) => checkIn.type !== "thought");
+              const displayEntries = dedupeEntriesForDisplay(group.entries);
+              const thoughtEntry = displayEntries.find((checkIn) => checkIn.type === "thought");
+              const otherEntries = displayEntries.filter((checkIn) => checkIn.type !== "thought");
               return (
                 <li
                   key={group.user.id}

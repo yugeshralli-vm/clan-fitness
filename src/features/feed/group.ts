@@ -121,6 +121,25 @@ export function groupByUserAndDay(rows: FeedRow[], timezone: string | null | und
 
 export type DayGroup = ReturnType<typeof groupByUserAndDay>[number];
 
+// A group's entries can rarely contain more than one check-in of the same type — the per-day
+// dedup on write (getTodaysCheckIn) is keyed by the AUTHOR's own timezone at submission time,
+// while a group's day boundary here is keyed by the VIEWER's timezone, and either can drift (e.g.
+// a device briefly reporting a different zone re-syncs `users.timezone` — see TimezoneSync.tsx)
+// enough to land two real calendar days in one viewer-day. The later check-in is what's meaningful
+// (a steps/gym/food entry represents "the current value for that day," not an additional one), so
+// display always goes through this rather than the raw list. Entries are newest-first (see
+// groupByUserAndDay above), so the first occurrence of a type is already the latest — no createdAt
+// comparison needed. `group.entries` itself is left untouched — reactions/comments/the
+// notification anchor are all bound to specific ids within it and must stay stable.
+export function dedupeEntriesForDisplay(entries: FeedRow["checkIn"][]) {
+  const seenTypes = new Set<string>();
+  return entries.filter((checkIn) => {
+    if (seenTypes.has(checkIn.type)) return false;
+    seenTypes.add(checkIn.type);
+    return true;
+  });
+}
+
 export type SystemPostFeedItem = { kind: "systemPost"; day: string; latestAt: Date; post: SystemPostForFeed };
 
 export type FeedCard = DayGroup | SystemPostFeedItem;
