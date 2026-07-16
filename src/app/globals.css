@@ -36,7 +36,7 @@
 }
 
 html {
-  overflow-x: hidden;
+  overflow-x: clip;
   /* App-wide: no text-selection highlight or iOS's copy/share callout on long-press, matching a
      native-app feel (this is an installable PWA). Inputs/textareas/contenteditable opt back in
      below, since typing and editing still needs normal selection/cursor behavior. */
@@ -48,7 +48,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 input,
