@@ -6,3 +6,5 @@ export const CLAN_MESSAGE_MAX_LENGTH = 2000;
  * — same split as COMMENT_MAX_LENGTH/COMMENT_MAX_RAW_LENGTH in src/features/comments/types.ts.
  */
 export const CLAN_MESSAGE_MAX_RAW_LENGTH = 3000;
+
+export type ClanChatEntry = { clanId: string; latestMessageAt: Date | null };
