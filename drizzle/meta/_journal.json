@@ -148,6 +148,13 @@
       "when": 1784280416796,
       "tag": "0020_silky_scream",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1784286131371,
+      "tag": "0021_rich_wendigo",
+      "breakpoints": true
     }
   ]
 }

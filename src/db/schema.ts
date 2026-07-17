@@ -218,7 +218,8 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "feedback", // unused since feedback chat was replaced by clan chat — kept, enum values can't be dropped
   "broadcast",
   "weekly_recap",
-  "clan_message",
+  "clan_message", // unused since clan chat now only notifies for mentions/replies — enum values can't be dropped
+  "reply",
 ]);
 
 export const notifications = pgTable(
