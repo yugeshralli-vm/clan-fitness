@@ -67,7 +67,7 @@ export function ClanChatMessageRow({
             </Link>
           )}
           <div
-            className={`rounded-lg px-3 py-2 text-sm ${
+            className={`min-w-0 rounded-lg px-3 py-2 text-sm ${
               mine
                 ? "bg-accent text-accent-foreground"
                 : "border border-surface-border bg-surface text-foreground-secondary"
