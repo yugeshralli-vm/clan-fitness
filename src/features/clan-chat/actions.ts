@@ -45,17 +45,19 @@ export async function sendClanMessage(
   if (displayText.length > CLAN_MESSAGE_MAX_LENGTH) return { error: "Message is too long." };
   const rawReplyToMessageId = formData.get("replyToMessageId");
   let replyToMessageId: string | undefined;
+  let replyToAuthorId: string | undefined;
   if (typeof rawReplyToMessageId === "string" && rawReplyToMessageId) {
     // A member of multiple clans could otherwise pass a message id from a *different* clan they're
     // also in, quoting its content into this clan's chat for members who aren't authorized to see
     // it — so the reply target has to be re-checked against this clanId, not just any valid id.
     const [target] = await db
-      .select({ id: clanMessages.id })
+      .select({ id: clanMessages.id, userId: clanMessages.userId })
       .from(clanMessages)
       .where(and(eq(clanMessages.id, rawReplyToMessageId), eq(clanMessages.clanId, clanId)))
       .limit(1);
     if (!target) return { error: "Invalid reply target." };
     replyToMessageId = rawReplyToMessageId;
+    replyToAuthorId = target.userId;
   }
 
   await db.insert(clanMessages).values({ clanId, userId: access.userId, body, replyToMessageId });
@@ -66,20 +68,27 @@ export async function sendClanMessage(
   const mentionedIds = new Set(
     extractMentionedUserIds(body).filter((id) => memberIds.has(id) && id !== access.userId),
   );
-  const recipientIds = members.map((m) => m.user.id).filter((id) => id !== access.userId);
   const url = `/clans/${clanId}/chat`;
 
+  // Only mentions and replies notify — chat used to ping every member on every message, which was
+  // too noisy for an active clan; a reply to your own message is worth surfacing even if you
+  // weren't @mentioned in it, but not if you were (avoid double-notifying the same message).
   await Promise.all(
-    recipientIds.map((userId) =>
+    [...mentionedIds].map((userId) =>
       notifyUser(
         userId,
-        mentionedIds.has(userId)
-          ? { type: "mention", title: `${author?.user.name ?? "Someone"} mentioned you in clan chat`, body: preview(displayText), url }
-          : { type: "clan_message", title: `${author?.user.name ?? "Someone"} in clan chat`, body: preview(displayText), url },
+        { type: "mention", title: `${author?.user.name ?? "Someone"} mentioned you in clan chat`, body: preview(displayText), url },
         { skipEmail: true },
       ),
     ),
   );
+  if (replyToAuthorId && replyToAuthorId !== access.userId && !mentionedIds.has(replyToAuthorId)) {
+    await notifyUser(
+      replyToAuthorId,
+      { type: "reply", title: `${author?.user.name ?? "Someone"} replied to your message in clan chat`, body: preview(displayText), url },
+      { skipEmail: true },
+    );
+  }
 
   revalidatePath(`/clans/${clanId}/chat`);
   return { sent: true };

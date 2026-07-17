@@ -16,7 +16,8 @@ export type NotificationType =
   | "feedback"
   | "broadcast"
   | "weekly_recap"
-  | "clan_message";
+  | "clan_message"
+  | "reply";
 
 export type NotificationPayload = {
   type: NotificationType;
