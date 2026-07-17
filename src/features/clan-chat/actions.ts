@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { clanMessages } from "@/db/schema";
@@ -42,14 +43,22 @@ export async function sendClanMessage(
   if (body.length > CLAN_MESSAGE_MAX_RAW_LENGTH) return { error: "Message is too long." };
   const displayText = mentionsToPlainText(body);
   if (displayText.length > CLAN_MESSAGE_MAX_LENGTH) return { error: "Message is too long." };
-  const replyToMessageId = formData.get("replyToMessageId");
+  const rawReplyToMessageId = formData.get("replyToMessageId");
+  let replyToMessageId: string | undefined;
+  if (typeof rawReplyToMessageId === "string" && rawReplyToMessageId) {
+    // A member of multiple clans could otherwise pass a message id from a *different* clan they're
+    // also in, quoting its content into this clan's chat for members who aren't authorized to see
+    // it — so the reply target has to be re-checked against this clanId, not just any valid id.
+    const [target] = await db
+      .select({ id: clanMessages.id })
+      .from(clanMessages)
+      .where(and(eq(clanMessages.id, rawReplyToMessageId), eq(clanMessages.clanId, clanId)))
+      .limit(1);
+    if (!target) return { error: "Invalid reply target." };
+    replyToMessageId = rawReplyToMessageId;
+  }
 
-  await db.insert(clanMessages).values({
-    clanId,
-    userId: access.userId,
-    body,
-    replyToMessageId: typeof replyToMessageId === "string" && replyToMessageId ? replyToMessageId : undefined,
-  });
+  await db.insert(clanMessages).values({ clanId, userId: access.userId, body, replyToMessageId });
 
   const members = await getClanMembers(clanId);
   const author = members.find((m) => m.user.id === access.userId);

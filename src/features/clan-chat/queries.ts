@@ -1,6 +1,6 @@
 import "server-only";
 
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { clanMessages, users } from "@/db/schema";
@@ -44,7 +44,12 @@ export async function getClanMessages(clanId: string): Promise<ClanMessageRow[]>
     })
     .from(clanMessages)
     .innerJoin(users, eq(clanMessages.userId, users.id))
-    .leftJoin(replyMessage, eq(clanMessages.replyToMessageId, replyMessage.id))
+    // Defense in depth alongside sendClanMessage's write-time check: a reply can only ever
+    // resolve to a message in the same clan, never a foreign clan's row.
+    .leftJoin(
+      replyMessage,
+      and(eq(clanMessages.replyToMessageId, replyMessage.id), eq(replyMessage.clanId, clanMessages.clanId)),
+    )
     .leftJoin(replyAuthor, eq(replyMessage.userId, replyAuthor.id))
     .where(eq(clanMessages.clanId, clanId))
     .orderBy(desc(clanMessages.createdAt))
