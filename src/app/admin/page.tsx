@@ -10,7 +10,6 @@ import {
   getNotificationDeliveryStats,
   NotificationHealthSection,
 } from "@/features/admin";
-import { FeedbackThreadsList } from "@/features/feedback";
 
 export default async function AdminPage() {
   const [config, notificationStats, clans, allUsers, broadcasts] = await Promise.all([
@@ -34,7 +33,6 @@ export default async function AdminPage() {
         </div>
       ),
     },
-    { id: "feedback", label: "Feedback", content: <FeedbackThreadsList /> },
   ];
 
   return (

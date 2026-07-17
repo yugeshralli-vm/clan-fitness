@@ -15,7 +15,8 @@ export type NotificationType =
   | "nudge"
   | "feedback"
   | "broadcast"
-  | "weekly_recap";
+  | "weekly_recap"
+  | "clan_message";
 
 export type NotificationPayload = {
   type: NotificationType;

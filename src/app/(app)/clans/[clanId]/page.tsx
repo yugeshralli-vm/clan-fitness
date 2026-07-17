@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
+import { ClanChatFab } from "@/features/clan-chat";
 import { getClanById, getClanMembers } from "@/features/clans";
 import { ClanFeed } from "@/features/feed";
 
@@ -31,6 +32,7 @@ export default async function ClanPage({
         </p>
       </div>
       <ClanFeed clanId={clanId} highlightCheckInId={checkIn} members={members} />
+      <ClanChatFab clanId={clanId} />
     </div>
   );
 }

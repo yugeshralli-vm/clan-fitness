@@ -127,6 +127,20 @@
       "when": 1784038950332,
       "tag": "0017_lonely_turbo",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784250210881,
+      "tag": "0018_lame_harpoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1784250615080,
+      "tag": "0019_opposite_fixer",
+      "breakpoints": true
     }
   ]
 }

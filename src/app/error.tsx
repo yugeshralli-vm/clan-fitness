@@ -16,7 +16,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
       <p className="text-lg font-semibold text-foreground">Something went wrong.</p>
       <p className="max-w-xs text-sm text-foreground-tertiary">
-        Give it another try — if it keeps happening, let us know from the feedback button.
+        Give it another try — if it keeps happening, come back in a bit.
       </p>
       <Button type="button" onClick={reset}>
         Try again

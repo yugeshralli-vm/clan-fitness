@@ -1,0 +1,1 @@
+export const CLAN_MESSAGE_MAX_LENGTH = 2000;

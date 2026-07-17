@@ -20,6 +20,7 @@ const TYPE_ICON: Record<NotificationType, ComponentType<{ size?: number; classNa
   feedback: MessageSquare,
   broadcast: Megaphone,
   weekly_recap: Trophy,
+  clan_message: MessageSquare,
 };
 
 export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: Promise<number> }) {

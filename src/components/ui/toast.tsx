@@ -60,8 +60,8 @@ export function Toaster() {
 
   return createPortal(
     <div
-      // Bottom-center: clears BottomNav on mobile (same breakpoint-driven offset FeedbackFab
-      // already uses) and FeedbackFab's own bottom-right position, without any z-index coordination
+      // Bottom-center: clears BottomNav on mobile (same breakpoint-driven offset ClanChatFab
+      // already uses) and ClanChatFab's own bottom-right position, without any z-index coordination
       // between the two. z-60 — one above BottomSheet's z-50, so a toast fired from within an open
       // sheet still surfaces above it.
       className="pointer-events-none fixed inset-x-0 z-60 flex flex-col-reverse items-center gap-2 bottom-[calc(4rem+env(safe-area-inset-bottom)+0.75rem)] px-4 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"

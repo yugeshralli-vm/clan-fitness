@@ -98,8 +98,15 @@ async function persistNotification(userId: string, payload: NotificationPayload)
  * devices), email (if they have an address on file), and an in-app notification row (always).
  * All three run rather than one replacing another — push has had ongoing delivery issues, so
  * email is a backup channel and the in-app record is the durable source of truth either way.
+ *
+ * `skipEmail` opts a call out of the email channel — for a high-frequency source (clan chat)
+ * where an email per message would be spammy, unlike the rare events every other caller sends.
  */
-export async function notifyUser(userId: string, payload: NotificationPayload) {
+export async function notifyUser(
+  userId: string,
+  payload: NotificationPayload,
+  options?: { skipEmail?: boolean },
+) {
   const [[user], unreadBefore] = await Promise.all([
     db.select({ email: users.email }).from(users).where(eq(users.id, userId)),
     getUnreadNotificationCount(userId),
@@ -111,7 +118,7 @@ export async function notifyUser(userId: string, payload: NotificationPayload) {
 
   await Promise.all([
     sendPushNotifications(userId, { ...payload, unreadCount }),
-    user?.email ? sendEmailNotification(userId, user.email, payload) : Promise.resolve(),
+    user?.email && !options?.skipEmail ? sendEmailNotification(userId, user.email, payload) : Promise.resolve(),
     persistNotification(userId, payload),
   ]);
 }
