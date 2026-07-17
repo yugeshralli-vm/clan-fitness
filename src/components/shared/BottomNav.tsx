@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, use, useEffect, useState, type ComponentType } from "react";
 import { useActiveClanId, type ClanOption } from "@/lib/active-clan";
+import { triggerHaptic } from "@/lib/haptics";
 
 export type FeedCheckInEntry = { clanId: string; latestCheckInAt: Date | null };
 
@@ -82,6 +83,7 @@ export function BottomNav({
           <Link
             key={item.href}
             href={item.href}
+            onClick={() => triggerHaptic()}
             className={`flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-semibold ${
               active ? "text-accent" : "text-foreground-tertiary"
             }`}
