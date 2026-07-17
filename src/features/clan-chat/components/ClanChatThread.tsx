@@ -121,6 +121,7 @@ export function ClanChatThread({
             key={message.id}
             message={message}
             mine={message.userId === currentUser.id}
+            currentUserId={currentUser.id}
             onReply={(replied) =>
               setReplyingTo({ id: replied.id, authorName: replied.authorName, body: replied.body })
             }

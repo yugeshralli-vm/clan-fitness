@@ -26,11 +26,13 @@ const LONG_PRESS_MS = 450;
 export function ClanChatMessageRow({
   message,
   mine,
+  currentUserId,
   onReply,
   onReact,
 }: {
   message: ClanMessageRow;
   mine: boolean;
+  currentUserId: string;
   onReply: (message: ClanMessageRow) => void;
   onReact: (messageId: string, summary: ReactionSummary) => void;
 }) {
@@ -78,6 +80,11 @@ export function ClanChatMessageRow({
     if (presentEmojis.length === 0) return;
     setReactorSheetOpen(true);
   }
+
+  // Removing your own reaction from the sheet (the only way to remove one — pills/tapping the
+  // bubble now just open this sheet) can empty it out entirely; derive the open state from the
+  // data itself so an empty sheet never lingers, rather than syncing it via an effect.
+  const showReactorSheet = reactorSheetOpen && presentEmojis.length > 0;
 
   return (
     <div className="relative min-w-0">
@@ -171,9 +178,8 @@ export function ClanChatMessageRow({
                 <button
                   key={emoji}
                   type="button"
-                  onClick={() => react(emoji)}
-                  disabled={pending}
-                  className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs disabled:opacity-60 ${
+                  onClick={openReactorSheet}
+                  className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
                     entry.reactedByMe
                       ? "border-accent text-accent"
                       : "border-surface-border text-foreground-tertiary"
@@ -211,7 +217,7 @@ export function ClanChatMessageRow({
         </>
       )}
 
-      <BottomSheet open={reactorSheetOpen} onClose={() => setReactorSheetOpen(false)} title="Reactions">
+      <BottomSheet open={showReactorSheet} onClose={() => setReactorSheetOpen(false)} title="Reactions">
         <div className="flex flex-col gap-4">
           {presentEmojis.map(([emoji, entry]) => (
             <div key={emoji}>
@@ -219,14 +225,31 @@ export function ClanChatMessageRow({
                 <span aria-hidden>{emoji}</span> {entry.users.length}
               </p>
               <ul className="flex flex-col divide-y divide-surface-border">
-                {entry.users.map((user) => (
-                  <li key={user.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                    <Link href={`/members/${user.id}`} className="flex items-center gap-3">
-                      <Avatar src={user.avatarUrl} name={user.name} />
-                      <span className="text-sm text-foreground">{user.name}</span>
-                    </Link>
-                  </li>
-                ))}
+                {entry.users.map((user) =>
+                  user.id === currentUserId ? (
+                    <li key={user.id} className="py-3 first:pt-0 last:pb-0">
+                      <button
+                        type="button"
+                        onClick={() => react(emoji)}
+                        disabled={pending}
+                        className="flex w-full items-center gap-3 text-left disabled:opacity-60"
+                      >
+                        <Avatar src={user.avatarUrl} name={user.name} />
+                        <span className="flex flex-col">
+                          <span className="text-sm text-foreground">You</span>
+                          <span className="text-xs text-foreground-tertiary">Tap to remove</span>
+                        </span>
+                      </button>
+                    </li>
+                  ) : (
+                    <li key={user.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                      <Link href={`/members/${user.id}`} className="flex items-center gap-3">
+                        <Avatar src={user.avatarUrl} name={user.name} />
+                        <span className="text-sm text-foreground">{user.name}</span>
+                      </Link>
+                    </li>
+                  ),
+                )}
               </ul>
             </div>
           ))}
