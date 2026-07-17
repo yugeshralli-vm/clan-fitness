@@ -4,7 +4,7 @@ import { ChevronDown, Plus } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { useActiveClanId, type ClanOption } from "@/lib/active-clan";
+import { parseClanIdFromPathname, useActiveClanId, type ClanOption } from "@/lib/active-clan";
 
 export function ClanSwitcher({ clans }: { clans: ClanOption[] }) {
   const router = useRouter();
@@ -19,6 +19,16 @@ export function ClanSwitcher({ clans }: { clans: ClanOption[] }) {
   function go(path: string) {
     setOpen(false);
     router.push(path);
+  }
+
+  // Preserve whichever clan-scoped tab (feed/chat/manage) is currently open instead of always
+  // dropping back to the feed — only when the current page actually names a real clan, since a
+  // clan-less page like /logs or /profile has no tab suffix to carry over.
+  function goToClan(clanId: string) {
+    const activeClanId = parseClanIdFromPathname(pathname);
+    const suffix =
+      activeClanId && clans.some((c) => c.id === activeClanId) ? pathname.slice(`/clans/${activeClanId}`.length) : "";
+    go(`/clans/${clanId}${suffix}`);
   }
 
   return (
@@ -38,7 +48,7 @@ export function ClanSwitcher({ clans }: { clans: ClanOption[] }) {
             <button
               key={clan.id}
               type="button"
-              onClick={() => go(`/clans/${clan.id}`)}
+              onClick={() => goToClan(clan.id)}
               className={`flex min-h-11 items-center rounded-lg px-3 text-left text-sm transition-colors ${
                 clan.id === currentClanId
                   ? "bg-accent/10 font-semibold text-accent"
