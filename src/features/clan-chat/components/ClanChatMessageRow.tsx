@@ -29,7 +29,7 @@ export function ClanChatMessageRow({
   const replyIconOpacity = useTransform(x, [0, SWIPE_TRIGGER_PX], [0, 1]);
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <motion.div
         style={{ opacity: replyIconOpacity }}
         className="pointer-events-none absolute inset-y-0 left-0 flex items-center text-foreground-tertiary"
