@@ -15,7 +15,7 @@ export default async function ClanChatPage({ params }: { params: Promise<{ clanI
   const isMember = members.some((m) => m.user.id === user.id);
   if (!clan || !isMember) notFound();
 
-  const messages = await getClanMessages(clanId);
+  const messages = await getClanMessages(clanId, user.id);
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4 px-6 py-8">

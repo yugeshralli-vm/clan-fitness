@@ -3,13 +3,19 @@
 import { Reply } from "lucide-react";
 import { motion, useMotionValue, useTransform } from "motion/react";
 import Link from "next/link";
+import { useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/shared/Avatar";
+import { toast } from "@/components/ui/toast";
+import { toggleClanMessageReaction } from "@/features/reactions/actions";
+import { CHAT_REACTION_EMOJIS } from "@/features/reactions/types";
+import type { ReactionSummary } from "@/features/reactions/types";
 import { triggerHaptic } from "@/lib/haptics";
 import { parseCommentSegments } from "@/lib/mentions";
 import type { ClanMessageRow } from "../queries";
 
 const SWIPE_TRIGGER_PX = 56;
 const SWIPE_MAX_PX = 72;
+const LONG_PRESS_MS = 450;
 
 /**
  * Extracted from ClanChatThread's list so each row can own its own drag motion value — hooks
@@ -20,13 +26,48 @@ export function ClanChatMessageRow({
   message,
   mine,
   onReply,
+  onReact,
 }: {
   message: ClanMessageRow;
   mine: boolean;
   onReply: (message: ClanMessageRow) => void;
+  onReact: (messageId: string, summary: ReactionSummary) => void;
 }) {
   const x = useMotionValue(0);
   const replyIconOpacity = useTransform(x, [0, SWIPE_TRIGGER_PX], [0, 1]);
+  const [pending, startTransition] = useTransition();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Long-press fires on pointer-down-and-hold; this flag exists purely for parity with
+  // ReactionBar's pattern in case a future change adds a plain tap action to this row too.
+  const longPressFired = useRef(false);
+
+  function cancelLongPress() {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  }
+
+  function handlePointerDown() {
+    longPressFired.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      triggerHaptic();
+      setPickerOpen(true);
+    }, LONG_PRESS_MS);
+  }
+
+  function react(emoji: string) {
+    setPickerOpen(false);
+    startTransition(async () => {
+      const result = await toggleClanMessageReaction(message.id, message.clanId, emoji);
+      if ("summary" in result) {
+        onReact(message.id, result.summary);
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  const presentEmojis = Object.entries(message.reactionsSummary).filter(([, entry]) => entry.users.length > 0);
 
   return (
     <div className="relative min-w-0">
@@ -44,12 +85,18 @@ export function ClanChatMessageRow({
         dragMomentum={false}
         dragSnapToOrigin
         style={{ x }}
+        onDragStart={cancelLongPress}
         onDragEnd={(_event, info) => {
           if (info.offset.x > SWIPE_TRIGGER_PX) {
             triggerHaptic();
             onReply(message);
           }
         }}
+        onPointerDown={handlePointerDown}
+        onPointerUp={cancelLongPress}
+        onPointerLeave={cancelLongPress}
+        onPointerCancel={cancelLongPress}
+        onContextMenu={(event) => event.preventDefault()}
         className={`flex touch-pan-y items-end gap-2 bg-background ${mine ? "flex-row-reverse" : ""}`}
       >
         {!mine && (
@@ -104,8 +151,52 @@ export function ClanChatMessageRow({
               )}
             </p>
           </div>
+
+          {presentEmojis.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {presentEmojis.map(([emoji, entry]) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => react(emoji)}
+                  disabled={pending}
+                  className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs disabled:opacity-60 ${
+                    entry.reactedByMe
+                      ? "border-accent text-accent"
+                      : "border-surface-border text-foreground-tertiary"
+                  }`}
+                >
+                  <span aria-hidden>{emoji}</span>
+                  {entry.users.length}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </motion.div>
+
+      {pickerOpen && (
+        <>
+          <div onClick={() => setPickerOpen(false)} aria-hidden className="fixed inset-0 z-20" />
+          <div
+            className={`absolute bottom-full z-20 mb-1 flex max-w-[90vw] flex-wrap gap-1 rounded-full border border-surface-border bg-surface p-1.5 shadow-lg ${
+              mine ? "right-0" : "left-0"
+            }`}
+          >
+            {CHAT_REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => react(emoji)}
+                disabled={pending}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg hover:bg-background disabled:opacity-60"
+              >
+                <span aria-hidden>{emoji}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

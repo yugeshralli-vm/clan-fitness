@@ -139,19 +139,20 @@ export const systemPosts = pgTable(
   (t) => [uniqueIndex("system_posts_clan_type_week_idx").on(t.clanId, t.type, t.weekStart)],
 );
 
-// checkInId/systemPostId: exactly one of the two is set, enforced at the application layer (not a
-// DB CHECK constraint) — a reaction/comment targets either a real check-in or a system post, never
-// both/neither. Two partial unique indexes rather than one combined index across both nullable
-// columns: Postgres treats NULL <> NULL in unique indexes, so a single index spanning both columns
-// would stop enforcing uniqueness among check-in reactions entirely (every row has systemPostId
-// NULL, and NULLs never collide) — the same partial-index pattern is already used for
-// clan_memberships_one_admin_idx above.
+// checkInId/systemPostId/clanMessageId: exactly one of the three is set, enforced at the
+// application layer (not a DB CHECK constraint) — a reaction/comment targets a check-in, a system
+// post, or a clan chat message, never more than one/neither. Separate partial unique indexes
+// rather than one combined index across all three nullable columns: Postgres treats NULL <> NULL
+// in unique indexes, so a single index spanning them would stop enforcing uniqueness within any
+// one target type entirely (every other column is NULL, and NULLs never collide) — the same
+// partial-index pattern is already used for clan_memberships_one_admin_idx above.
 export const reactions = pgTable(
   "reactions",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     checkInId: uuid("check_in_id").references(() => checkIns.id),
     systemPostId: uuid("system_post_id").references(() => systemPosts.id),
+    clanMessageId: uuid("clan_message_id").references(() => clanMessages.id),
     // The clan this reaction happened in — reactions are clan-scoped even though the underlying
     // check-in is visible across all of the owner's clans, so the same user can react to the same
     // check-in independently once per clan they share with the owner.
@@ -171,6 +172,9 @@ export const reactions = pgTable(
     uniqueIndex("reactions_system_post_clan_user_emoji_idx")
       .on(t.systemPostId, t.clanId, t.userId, t.emoji)
       .where(sql`${t.systemPostId} is not null`),
+    uniqueIndex("reactions_clan_message_clan_user_emoji_idx")
+      .on(t.clanMessageId, t.clanId, t.userId, t.emoji)
+      .where(sql`${t.clanMessageId} is not null`),
   ],
 );
 

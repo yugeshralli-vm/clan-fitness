@@ -8,7 +8,7 @@ import { checkIns, reactions } from "@/db/schema";
 import { getClanMembership } from "@/features/clans/queries";
 import { notifyUser } from "@/features/notifications/send";
 import { getOrSyncCurrentUser } from "@/lib/current-user";
-import { getReactionsForCheckIns, getReactionsForSystemPosts } from "./queries";
+import { getReactionsForCheckIns, getReactionsForClanMessages, getReactionsForSystemPosts } from "./queries";
 import type { ReactionSummary } from "./types";
 
 export async function toggleReaction(
@@ -94,4 +94,40 @@ export async function toggleSystemPostReaction(
 
   const summaries = await getReactionsForSystemPosts([systemPostId], clanId, user.id);
   return { summary: summaries[systemPostId] ?? {} };
+}
+
+/** Reacting to a clan chat message. Deliberately doesn't notify the message's author — chat
+ * notifications were already narrowed to just mentions/replies to cut noise (see
+ * sendClanMessage's comment); a notification on every reaction would reopen that same problem. */
+export async function toggleClanMessageReaction(
+  clanMessageId: string,
+  clanId: string,
+  emoji: string,
+): Promise<{ summary: ReactionSummary } | { error: string }> {
+  const user = await getOrSyncCurrentUser();
+  if (!user) return { error: "Not signed in." };
+  if (!(await getClanMembership(user.id, clanId))) return { error: "Not a member of this clan." };
+
+  const [existing] = await db
+    .select()
+    .from(reactions)
+    .where(
+      and(
+        eq(reactions.clanMessageId, clanMessageId),
+        eq(reactions.clanId, clanId),
+        eq(reactions.userId, user.id),
+        eq(reactions.emoji, emoji),
+      ),
+    );
+
+  if (existing) {
+    await db.delete(reactions).where(eq(reactions.id, existing.id));
+  } else {
+    await db.insert(reactions).values({ clanMessageId, clanId, userId: user.id, emoji });
+  }
+
+  revalidatePath(`/clans/${clanId}/chat`);
+
+  const summaries = await getReactionsForClanMessages([clanMessageId], clanId, user.id);
+  return { summary: summaries[clanMessageId] ?? {} };
 }

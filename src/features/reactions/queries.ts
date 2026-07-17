@@ -66,3 +66,34 @@ export async function getReactionsForSystemPosts(
 
   return summaries;
 }
+
+export async function getReactionsForClanMessages(
+  clanMessageIds: string[],
+  clanId: string,
+  currentUserId: string,
+): Promise<Record<string, ReactionSummary>> {
+  const summaries: Record<string, ReactionSummary> = {};
+  if (clanMessageIds.length === 0) return summaries;
+
+  const rows = await db
+    .select({
+      clanMessageId: reactions.clanMessageId,
+      emoji: reactions.emoji,
+      userId: reactions.userId,
+      userName: users.name,
+      userAvatarUrl: users.avatarUrl,
+    })
+    .from(reactions)
+    .innerJoin(users, eq(reactions.userId, users.id))
+    .where(and(inArray(reactions.clanMessageId, clanMessageIds), eq(reactions.clanId, clanId)));
+
+  for (const row of rows) {
+    if (!row.clanMessageId) continue; // narrows the column — always non-null for this query's own rows
+    const summary = (summaries[row.clanMessageId] ??= {});
+    const entry = (summary[row.emoji] ??= { reactedByMe: false, users: [] });
+    entry.users.push({ id: row.userId, name: row.userName, avatarUrl: row.userAvatarUrl });
+    if (row.userId === currentUserId) entry.reactedByMe = true;
+  }
+
+  return summaries;
+}
