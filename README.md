@@ -52,7 +52,57 @@ comment on each other's check-ins, and climb a weekly leaderboard.
 
 ## Changelog
 
+### 2026-07-17
+- Preserve current tab when switching clans ([#91](https://github.com/yugeshralli-vm/clan-fitness/pull/91))
+- Move chat reaction removal into the reactor sheet ([#90](https://github.com/yugeshralli-vm/clan-fitness/pull/90))
+- Tap a chat message to see who reacted; one reaction per member ([#89](https://github.com/yugeshralli-vm/clan-fitness/pull/89))
+- Move clan chat from floating button to a bottom nav tab ([#88](https://github.com/yugeshralli-vm/clan-fitness/pull/88))
+- Add hold-to-react on clan chat messages ([#87](https://github.com/yugeshralli-vm/clan-fitness/pull/87))
+- Show 2 lines of the quoted reply preview instead of 1 ([#86](https://github.com/yugeshralli-vm/clan-fitness/pull/86))
+- Cap reply-quote preview width independent of ancestor flex sizing ([#85](https://github.com/yugeshralli-vm/clan-fitness/pull/85))
+- Fix recurring production build failures with a lazy DB client ([#84](https://github.com/yugeshralli-vm/clan-fitness/pull/84))
+- Fix reply-quote preview inflating the whole chat bubble ([#83](https://github.com/yugeshralli-vm/clan-fitness/pull/83))
+- Fix chat message/reply-quote overflowing off-screen ([#82](https://github.com/yugeshralli-vm/clan-fitness/pull/82))
+- Only notify on mentions and replies in clan chat ([#81](https://github.com/yugeshralli-vm/clan-fitness/pull/81))
+- Fix reply quote bubble overflowing off-screen ([#80](https://github.com/yugeshralli-vm/clan-fitness/pull/80))
+- Fix clan chat scroll/avatar-link bugs and add swipe-to-reply ([#79](https://github.com/yugeshralli-vm/clan-fitness/pull/79))
+- Add haptic feedback to core interactive elements ([#78](https://github.com/yugeshralli-vm/clan-fitness/pull/78))
+- Let members view each other's profiles ([#77](https://github.com/yugeshralli-vm/clan-fitness/pull/77))
+- Add @mentions and an unread badge to clan chat ([#76](https://github.com/yugeshralli-vm/clan-fitness/pull/76))
+- Turn 1:1 feedback chat into a per-clan group chat ([#75](https://github.com/yugeshralli-vm/clan-fitness/pull/75))
+
+### 2026-07-16
+- Fix Clerk API rate limiting causing errors on /profile, /logs, etc. ([#74](https://github.com/yugeshralli-vm/clan-fitness/pull/74))
+
+### 2026-07-15
+- Show only the latest entry per type in a feed card ([#73](https://github.com/yugeshralli-vm/clan-fitness/pull/73))
+
+### 2026-07-14
+- Fix background scroll leaking behind the image lightbox ([#72](https://github.com/yugeshralli-vm/clan-fitness/pull/72))
+- Auto-grow daily log's text fields while typing ([#71](https://github.com/yugeshralli-vm/clan-fitness/pull/71))
+- Restyle DailyLogForm into clear bordered sections with icons ([#70](https://github.com/yugeshralli-vm/clan-fitness/pull/70))
+- Add "Thought" label above the daily thought input ([#69](https://github.com/yugeshralli-vm/clan-fitness/pull/69))
+- Add an optional "What's on your mind?" daily thought ([#68](https://github.com/yugeshralli-vm/clan-fitness/pull/68))
+- Show all day-of-week labels in the Activity heatmap ([#67](https://github.com/yugeshralli-vm/clan-fitness/pull/67))
+- Redesign Profile into a summary page with Activity heatmap and History ([#66](https://github.com/yugeshralli-vm/clan-fitness/pull/66))
+
+### 2026-07-13
+- Add per-user timezone for daily check-in logic ([#65](https://github.com/yugeshralli-vm/clan-fitness/pull/65))
+- Improve SEO for the landing page ([#64](https://github.com/yugeshralli-vm/clan-fitness/pull/64))
+- Block saving a log while a photo upload has failed ([#63](https://github.com/yugeshralli-vm/clan-fitness/pull/63))
+- Fix feed pagination splitting a person's own check-ins across pages ([#62](https://github.com/yugeshralli-vm/clan-fitness/pull/62))
+- Fix UTC-vs-IST day boundary bug and bump feed page size ([#61](https://github.com/yugeshralli-vm/clan-fitness/pull/61))
+
+### 2026-07-12
+- Rename weekly top-3 label to "Wall of Fame" ([#60](https://github.com/yugeshralli-vm/clan-fitness/pull/60))
+- Add app-wide toast notifications for action feedback ([#59](https://github.com/yugeshralli-vm/clan-fitness/pull/59))
+- Add a Yesterday period to the leaderboard picker ([#58](https://github.com/yugeshralli-vm/clan-fitness/pull/58))
+- Fix Clerk middleware blocking the cron route ([#57](https://github.com/yugeshralli-vm/clan-fitness/pull/57))
+- Let the leaderboard tab show Today / This Week / This Month ([#56](https://github.com/yugeshralli-vm/clan-fitness/pull/56))
+- Add weekly Top 3 / Wall of Shame system posts ([#55](https://github.com/yugeshralli-vm/clan-fitness/pull/55))
+
 ### 2026-07-11
+- Write a real README: features and changelog ([#54](https://github.com/yugeshralli-vm/clan-fitness/pull/54))
 - Fix blank white box in Android notification shade ([#53](https://github.com/yugeshralli-vm/clan-fitness/pull/53))
 - Show unread count on the PWA home-screen app icon ([#52](https://github.com/yugeshralli-vm/clan-fitness/pull/52))
 - Replace placeholder icons with the real Clan Fitness logo ([#51](https://github.com/yugeshralli-vm/clan-fitness/pull/51))
