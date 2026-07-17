@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { Avatar } from "@/components/shared/Avatar";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -31,25 +32,29 @@ export function NudgeSheet({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex w-full min-w-0 items-center gap-3 text-left"
-      >
-        <Avatar src={memberAvatarUrl} name={memberName} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm text-foreground">{memberName}</p>
-          <p className="text-xs text-danger">Not logged yet</p>
-        </div>
-        <ChevronRight size={16} className="shrink-0 text-foreground-muted" />
-      </button>
+      <div className="flex w-full min-w-0 items-center gap-3">
+        <Link href={`/members/${memberUserId}`} className="shrink-0">
+          <Avatar src={memberAvatarUrl} name={memberName} />
+        </Link>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm text-foreground">{memberName}</p>
+            <p className="text-xs text-danger">Not logged yet</p>
+          </div>
+          <ChevronRight size={16} className="shrink-0 text-foreground-muted" />
+        </button>
+      </div>
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title="Nudge">
         <div className="flex flex-col gap-6">
-          <div className="flex items-center gap-3">
+          <Link href={`/members/${memberUserId}`} className="flex items-center gap-3" onClick={() => setOpen(false)}>
             <Avatar src={memberAvatarUrl} name={memberName} size={48} />
             <span className="text-lg font-semibold text-foreground">{memberName}</span>
-          </div>
+          </Link>
 
           <form action={formAction}>
             <Button type="submit" variant="secondary" className="w-full" disabled={pending || state?.sent}>

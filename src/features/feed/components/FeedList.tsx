@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/shared/Avatar";
 import { PhotoCarousel } from "@/components/ui/photo-carousel";
@@ -146,12 +147,17 @@ export function FeedList({
                     isHighlighted ? "border-accent bg-accent/10" : "border-surface-border bg-surface"
                   }`}
                 >
-                  <Avatar src={group.user.avatarUrl} name={group.user.name} />
+                  <Link href={`/members/${group.user.id}`} className="shrink-0">
+                    <Avatar src={group.user.avatarUrl} name={group.user.name} />
+                  </Link>
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="min-w-0 truncate text-sm font-semibold text-foreground">
+                      <Link
+                        href={`/members/${group.user.id}`}
+                        className="min-w-0 truncate text-sm font-semibold text-foreground"
+                      >
                         {group.user.name}
-                      </span>
+                      </Link>
                       <time
                         className="shrink-0 text-xs text-foreground-muted"
                         dateTime={group.latestAt.toISOString()}

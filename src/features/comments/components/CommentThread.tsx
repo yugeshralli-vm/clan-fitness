@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/shared/Avatar";
 import { MentionInput, type MentionInputHandle } from "@/components/shared/MentionInput";
@@ -75,9 +76,13 @@ export function CommentThread({
         <ul className="flex flex-col gap-2">
           {comments.map((comment) => (
             <li key={comment.id} className="flex min-w-0 items-start gap-2">
-              <Avatar src={comment.user.avatarUrl} name={comment.user.name} size={24} />
+              <Link href={`/members/${comment.user.id}`} className="shrink-0">
+                <Avatar src={comment.user.avatarUrl} name={comment.user.name} size={24} />
+              </Link>
               <p className="min-w-0 flex-1 text-sm text-foreground-secondary">
-                <span className="font-semibold text-foreground">{comment.user.name}</span>{" "}
+                <Link href={`/members/${comment.user.id}`} className="font-semibold text-foreground">
+                  {comment.user.name}
+                </Link>{" "}
                 {parseCommentSegments(comment.text).map((segment, i) =>
                   segment.type === "mention" ? (
                     <span key={i} className="font-semibold text-accent">

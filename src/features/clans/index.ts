@@ -16,6 +16,7 @@ export {
   getClanMembers,
   getClanMembersForClanIds,
   getClanMembership,
+  getSharedClans,
   getUserClans,
   getUserClansAsOf,
 } from "./queries";

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/shared/Avatar";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -98,8 +99,10 @@ export function ReactionBar({
         <ul className="flex flex-col divide-y divide-surface-border">
           {reactors.map((user) => (
             <li key={user.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-              <Avatar src={user.avatarUrl} name={user.name} />
-              <span className="text-sm text-foreground">{user.name}</span>
+              <Link href={`/members/${user.id}`} className="flex items-center gap-3">
+                <Avatar src={user.avatarUrl} name={user.name} />
+                <span className="text-sm text-foreground">{user.name}</span>
+              </Link>
             </li>
           ))}
         </ul>
