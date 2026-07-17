@@ -4,6 +4,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { clanMessages, users } from "@/db/schema";
+import { getReactionsForClanMessages } from "@/features/reactions/queries";
+import type { ReactionSummary } from "@/features/reactions/types";
 
 export type ClanMessageRow = {
   id: string;
@@ -16,6 +18,7 @@ export type ClanMessageRow = {
   replyToMessageId: string | null;
   replyToAuthorName: string | null;
   replyToBody: string | null;
+  reactionsSummary: ReactionSummary;
 };
 
 const replyMessage = alias(clanMessages, "reply_message");
@@ -28,7 +31,7 @@ const replyAuthor = alias(users, "reply_author");
 // member who's since left the clan) rather than requiring a separate members lookup to render.
 // The two left joins resolve a swipe-to-reply's quoted message + its author in the same
 // round-trip — left, not inner, since replyToMessageId is nullable for most messages.
-export async function getClanMessages(clanId: string): Promise<ClanMessageRow[]> {
+export async function getClanMessages(clanId: string, currentUserId: string): Promise<ClanMessageRow[]> {
   const rows = await db
     .select({
       id: clanMessages.id,
@@ -55,7 +58,18 @@ export async function getClanMessages(clanId: string): Promise<ClanMessageRow[]>
     .orderBy(desc(clanMessages.createdAt))
     .limit(200);
 
-  return rows.reverse();
+  // One extra batched query for the whole page, not one per message — same shape as
+  // getReactionsForCheckIns — merged in here so it rides along on the existing 2s poll
+  // (fetchClanMessages just re-calls this) instead of needing separate client-side plumbing.
+  const reactionSummaries = await getReactionsForClanMessages(
+    rows.map((row) => row.id),
+    clanId,
+    currentUserId,
+  );
+
+  return rows
+    .map((row) => ({ ...row, reactionsSummary: reactionSummaries[row.id] ?? {} }))
+    .reverse();
 }
 
 export async function getLatestClanMessageAt(clanId: string) {

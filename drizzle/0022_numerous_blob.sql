@@ -1,0 +1,3 @@
+ALTER TABLE "reactions" ADD COLUMN "clan_message_id" uuid;--> statement-breakpoint
+ALTER TABLE "reactions" ADD CONSTRAINT "reactions_clan_message_id_clan_messages_id_fk" FOREIGN KEY ("clan_message_id") REFERENCES "public"."clan_messages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "reactions_clan_message_clan_user_emoji_idx" ON "reactions" USING btree ("clan_message_id","clan_id","user_id","emoji") WHERE "reactions"."clan_message_id" is not null;

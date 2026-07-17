@@ -84,6 +84,7 @@ export function ClanChatThread({
         replyToMessageId: replyingTo?.id ?? null,
         replyToAuthorName: replyingTo?.authorName ?? null,
         replyToBody: replyingTo?.body ?? null,
+        reactionsSummary: {},
       },
     ]);
     setText("");
@@ -122,6 +123,9 @@ export function ClanChatThread({
             mine={message.userId === currentUser.id}
             onReply={(replied) =>
               setReplyingTo({ id: replied.id, authorName: replied.authorName, body: replied.body })
+            }
+            onReact={(messageId, summary) =>
+              setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, reactionsSummary: summary } : m)))
             }
           />
         ))}

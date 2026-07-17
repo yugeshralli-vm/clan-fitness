@@ -99,5 +99,5 @@ export async function sendClanMessage(
 export async function fetchClanMessages(clanId: string) {
   const access = await resolveAccess(clanId);
   if (!access.allowed) return [];
-  return getClanMessages(clanId);
+  return getClanMessages(clanId, access.userId);
 }
