@@ -57,7 +57,7 @@ export function ClanChatMessageRow({
             <Avatar src={message.authorAvatarUrl} name={message.authorName} size={28} />
           </Link>
         )}
-        <div className={`flex max-w-[75%] flex-col gap-0.5 ${mine ? "items-end" : "items-start"}`}>
+        <div className={`flex min-w-0 max-w-[75%] flex-col gap-0.5 ${mine ? "items-end" : "items-start"}`}>
           {!mine && (
             <Link
               href={`/members/${message.userId}`}
