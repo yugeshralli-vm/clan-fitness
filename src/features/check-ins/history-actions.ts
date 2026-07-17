@@ -1,6 +1,8 @@
 "use server";
 
-import { getOrSyncCurrentUser } from "@/lib/current-user";
+import { auth } from "@clerk/nextjs/server";
+import { getSharedClans } from "@/features/clans/queries";
+import { getOrSyncCurrentUser, getUserById } from "@/lib/current-user";
 import { userDayKey } from "@/lib/timezone-date";
 import { getUserCheckInHistory, type CheckInHistoryRow } from "./queries";
 import type { CheckInType } from "./types";
@@ -28,6 +30,26 @@ function groupByDay(rows: CheckInHistoryRow[], timezone: string | null): History
   return groups;
 }
 
+async function fetchHistory(
+  userId: string,
+  timezone: string | null,
+  type: CheckInType | "all",
+  range: HistoryRange,
+  before?: string,
+) {
+  const { rows, hasMore } = await getUserCheckInHistory(
+    userId,
+    {
+      type: type === "all" ? undefined : type,
+      start: rangeStart(range, new Date()),
+      before: before ? new Date(before) : undefined,
+    },
+    timezone,
+  );
+
+  return { days: groupByDay(rows, timezone), hasMore };
+}
+
 // Powers the profile History section — both its initial server-render and every client-side
 // filter change / "Load more" call this same action, so there's one code path for both
 // (getOrSyncCurrentUser is request-deduped, so calling it again server-side costs nothing extra).
@@ -35,15 +57,29 @@ export async function getFilteredHistory(type: CheckInType | "all", range: Histo
   const user = await getOrSyncCurrentUser();
   if (!user) throw new Error("Not signed in.");
 
-  const { rows, hasMore } = await getUserCheckInHistory(
-    user.id,
-    {
-      type: type === "all" ? undefined : type,
-      start: rangeStart(range, new Date()),
-      before: before ? new Date(before) : undefined,
-    },
-    user.timezone,
-  );
+  return fetchHistory(user.id, user.timezone, type, range, before);
+}
 
-  return { days: groupByDay(rows, user.timezone), hasMore };
+// Same as getFilteredHistory, but for viewing someone else's History section — gated the same way
+// the rest of the app scopes visibility (see getSharedClans): a stranger can't pull another user's
+// check-in history just by knowing their id, since this is a directly callable server action, not
+// just a page a UI happens not to link to.
+export async function getFilteredHistoryForUser(
+  targetUserId: string,
+  type: CheckInType | "all",
+  range: HistoryRange,
+  before?: string,
+) {
+  const { userId: viewerId } = await auth();
+  if (!viewerId) throw new Error("Not signed in.");
+
+  if (viewerId !== targetUserId) {
+    const shared = await getSharedClans(viewerId, targetUserId);
+    if (shared.length === 0) throw new Error("Not authorized.");
+  }
+
+  const target = await getUserById(targetUserId);
+  if (!target) throw new Error("User not found.");
+
+  return fetchHistory(target.id, target.timezone, type, range, before);
 }

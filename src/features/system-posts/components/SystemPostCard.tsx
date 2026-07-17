@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Avatar } from "@/components/shared/Avatar";
 import { CommentSheet } from "@/features/comments/components/CommentSheet";
 import type { ClanMemberOption } from "@/features/comments/components/CommentThread";
@@ -65,8 +66,10 @@ export function SystemPostCard({
                 <span className="w-4 shrink-0 text-center text-sm" aria-hidden>
                   {MEDALS[i]}
                 </span>
-                <Avatar src={entry.avatarUrl} name={entry.name} size={20} />
-                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{entry.name}</span>
+                <Link href={`/members/${entry.userId}`} className="flex min-w-0 flex-1 items-center gap-2">
+                  <Avatar src={entry.avatarUrl} name={entry.name} size={20} />
+                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">{entry.name}</span>
+                </Link>
                 <span className="h-1 w-11 shrink-0 overflow-hidden rounded-full bg-surface-border">
                   <span
                     className="block h-full rounded-full bg-accent"
@@ -88,13 +91,14 @@ export function SystemPostCard({
             </span>
             <div className="flex flex-wrap gap-1.5">
               {post.wallOfShame.map((entry) => (
-                <span
+                <Link
                   key={entry.userId}
+                  href={`/members/${entry.userId}`}
                   className="flex items-center gap-1.5 rounded-full border border-surface-border bg-background px-2 py-1 text-xs text-foreground-secondary"
                 >
                   <Avatar src={entry.avatarUrl} name={entry.name} size={17} />
                   {entry.name}
-                </span>
+                </Link>
               ))}
             </div>
           </div>

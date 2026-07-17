@@ -4,7 +4,7 @@ import { ChevronDown, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useState, useTransition } from "react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { getFilteredHistory } from "@/features/check-ins/history-actions";
+import { getFilteredHistory, getFilteredHistoryForUser } from "@/features/check-ins/history-actions";
 import type { HistoryDayGroup, HistoryRange } from "@/features/check-ins/history-actions";
 import { getFoodPhotoUrls } from "@/features/check-ins/types";
 import type { CheckInType, FoodCheckInValue } from "@/features/check-ins/types";
@@ -43,10 +43,13 @@ export function HistorySection({
   initialDays,
   initialHasMore,
   timezone,
+  userId,
 }: {
   initialDays: HistoryDayGroup[];
   initialHasMore: boolean;
   timezone: string;
+  /** Viewing someone else's history (read-only profile) — omit for the signed-in user's own. */
+  userId?: string;
 }) {
   const [type, setType] = useState<CheckInType | "all">("all");
   const [range, setRange] = useState<HistoryRange>("30d");
@@ -55,11 +58,17 @@ export function HistorySection({
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [pending, startTransition] = useTransition();
 
+  function fetchPage(nextType: CheckInType | "all", nextRange: HistoryRange, before?: string) {
+    return userId
+      ? getFilteredHistoryForUser(userId, nextType, nextRange, before)
+      : getFilteredHistory(nextType, nextRange, before);
+  }
+
   function applyFilters(nextType: CheckInType | "all", nextRange: HistoryRange) {
     setType(nextType);
     setRange(nextRange);
     startTransition(async () => {
-      const result = await getFilteredHistory(nextType, nextRange);
+      const result = await fetchPage(nextType, nextRange);
       setDays(result.days);
       setHasMore(result.hasMore);
     });
@@ -70,7 +79,7 @@ export function HistorySection({
     const lastEntry = lastDay?.entries[lastDay.entries.length - 1];
     if (!lastEntry) return;
     startTransition(async () => {
-      const result = await getFilteredHistory(type, range, lastEntry.createdAt.toISOString());
+      const result = await fetchPage(type, range, lastEntry.createdAt.toISOString());
       setDays((prev) => [...prev, ...result.days]);
       setHasMore(result.hasMore);
     });

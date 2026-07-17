@@ -21,6 +21,16 @@ export async function getUserClansAsOf(userId: string, asOf: Date) {
     .where(and(eq(clanMemberships.userId, userId), lte(clanMemberships.joinedAt, asOf)));
 }
 
+/** Clans two users are both currently in — the authorization check for viewing someone's profile
+ * (same "clan-mates only" visibility rule as the feed/leaderboard/comments), and also useful for
+ * showing which clan(s) a viewed profile is shared in. Clan counts per user are tiny, so
+ * intersecting in application code is simpler than a self-join and costs nothing meaningful. */
+export async function getSharedClans(userIdA: string, userIdB: string) {
+  const [clansA, clansB] = await Promise.all([getUserClans(userIdA), getUserClans(userIdB)]);
+  const idsB = new Set(clansB.map((c) => c.clan.id));
+  return clansA.map((c) => c.clan).filter((clan) => idsB.has(clan.id));
+}
+
 export async function getClanById(clanId: string) {
   const [clan] = await db.select().from(clans).where(eq(clans.id, clanId));
   return clan ?? null;

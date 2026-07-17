@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { Avatar } from "@/components/shared/Avatar";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -61,8 +62,10 @@ export function ClanLeaderboardSection({
         {leaderboard.map(
           ({ user, periodCount, periodTarget, periodSteps, periodStepsTarget, streak, stepPct, gymPct }) => (
             <li key={user.id} className="flex min-w-0 items-center gap-3 py-3 first:pt-0 last:pb-0">
-              <Avatar src={user.avatarUrl} name={user.name} />
-              <span className="min-w-0 flex-1 truncate text-sm text-foreground">{user.name}</span>
+              <Link href={`/members/${user.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                <Avatar src={user.avatarUrl} name={user.name} />
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{user.name}</span>
+              </Link>
               <button
                 type="button"
                 onClick={() => setShowPercent((prev) => !prev)}
