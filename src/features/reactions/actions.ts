@@ -98,7 +98,11 @@ export async function toggleSystemPostReaction(
 
 /** Reacting to a clan chat message. Deliberately doesn't notify the message's author — chat
  * notifications were already narrowed to just mentions/replies to cut noise (see
- * sendClanMessage's comment); a notification on every reaction would reopen that same problem. */
+ * sendClanMessage's comment); a notification on every reaction would reopen that same problem.
+ *
+ * Unlike check-ins/system posts (which let one member stack several different emojis), chat caps
+ * each member to a single reaction per message — a tapback, not a pill row — so picking a new
+ * emoji replaces whichever one this member already had here instead of adding a second. */
 export async function toggleClanMessageReaction(
   clanMessageId: string,
   clanId: string,
@@ -116,13 +120,13 @@ export async function toggleClanMessageReaction(
         eq(reactions.clanMessageId, clanMessageId),
         eq(reactions.clanId, clanId),
         eq(reactions.userId, user.id),
-        eq(reactions.emoji, emoji),
       ),
     );
 
   if (existing) {
     await db.delete(reactions).where(eq(reactions.id, existing.id));
-  } else {
+  }
+  if (existing?.emoji !== emoji) {
     await db.insert(reactions).values({ clanMessageId, clanId, userId: user.id, emoji });
   }
 

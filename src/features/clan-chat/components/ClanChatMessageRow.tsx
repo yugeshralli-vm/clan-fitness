@@ -5,6 +5,7 @@ import { motion, useMotionValue, useTransform } from "motion/react";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/shared/Avatar";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { toast } from "@/components/ui/toast";
 import { toggleClanMessageReaction } from "@/features/reactions/actions";
 import { CHAT_REACTION_EMOJIS } from "@/features/reactions/types";
@@ -37,9 +38,12 @@ export function ClanChatMessageRow({
   const replyIconOpacity = useTransform(x, [0, SWIPE_TRIGGER_PX], [0, 1]);
   const [pending, startTransition] = useTransition();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [reactorSheetOpen, setReactorSheetOpen] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Long-press fires on pointer-down-and-hold; this flag exists purely for parity with
-  // ReactionBar's pattern in case a future change adds a plain tap action to this row too.
+  // Long-press fires on pointer-down-and-hold, but the browser still sends a click once the
+  // finger/button lifts (no movement happened, so the browser doesn't suppress it) — this flag
+  // tells that trailing click to skip opening the reactor sheet, since the hold already opened
+  // the picker.
   const longPressFired = useRef(false);
 
   function cancelLongPress() {
@@ -68,6 +72,12 @@ export function ClanChatMessageRow({
   }
 
   const presentEmojis = Object.entries(message.reactionsSummary).filter(([, entry]) => entry.users.length > 0);
+
+  function openReactorSheet() {
+    if (longPressFired.current) return;
+    if (presentEmojis.length === 0) return;
+    setReactorSheetOpen(true);
+  }
 
   return (
     <div className="relative min-w-0">
@@ -114,7 +124,10 @@ export function ClanChatMessageRow({
             </Link>
           )}
           <div
+            onClick={openReactorSheet}
             className={`min-w-0 rounded-lg px-3 py-2 text-sm ${
+              presentEmojis.length > 0 ? "cursor-pointer" : ""
+            } ${
               mine
                 ? "bg-accent text-accent-foreground"
                 : "border border-surface-border bg-surface text-foreground-secondary"
@@ -197,6 +210,28 @@ export function ClanChatMessageRow({
           </div>
         </>
       )}
+
+      <BottomSheet open={reactorSheetOpen} onClose={() => setReactorSheetOpen(false)} title="Reactions">
+        <div className="flex flex-col gap-4">
+          {presentEmojis.map(([emoji, entry]) => (
+            <div key={emoji}>
+              <p className="mb-2 text-xs font-semibold text-foreground-tertiary">
+                <span aria-hidden>{emoji}</span> {entry.users.length}
+              </p>
+              <ul className="flex flex-col divide-y divide-surface-border">
+                {entry.users.map((user) => (
+                  <li key={user.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                    <Link href={`/members/${user.id}`} className="flex items-center gap-3">
+                      <Avatar src={user.avatarUrl} name={user.name} />
+                      <span className="text-sm text-foreground">{user.name}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </BottomSheet>
     </div>
   );
 }
