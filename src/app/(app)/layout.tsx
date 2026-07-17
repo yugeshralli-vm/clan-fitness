@@ -7,7 +7,7 @@ import { ClanSwitcher } from "@/components/shared/ClanSwitcher";
 import { InstallPrompt } from "@/components/shared/InstallPrompt";
 import { PullToRefresh } from "@/components/shared/PullToRefresh";
 import { getLatestCheckInAt } from "@/features/check-ins";
-import { ClanChatFab, getLatestClanMessageAt, type ClanChatEntry } from "@/features/clan-chat";
+import { getLatestClanMessageAt, type ClanChatEntry } from "@/features/clan-chat";
 import { getUserClans } from "@/features/clans";
 import { AutoEnableNotifications, NotificationBell } from "@/features/notifications";
 import { getUnreadNotificationCount } from "@/features/notifications/queries";
@@ -62,10 +62,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="flex-1 pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0">
         <PullToRefresh>{children}</PullToRefresh>
       </main>
-      <BottomNav clans={clans} latestFeedCheckInAtByClan={latestFeedCheckInAtByClan} />
+      <BottomNav
+        clans={clans}
+        latestFeedCheckInAtByClan={latestFeedCheckInAtByClan}
+        latestClanMessageAtByClan={latestClanMessageAtByClan}
+      />
       <AutoEnableNotifications />
       <InstallPrompt />
-      <ClanChatFab clans={clans} latestClanMessageAtByClan={latestClanMessageAtByClan} />
     </div>
   );
 }
