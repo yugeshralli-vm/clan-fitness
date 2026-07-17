@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   date,
   index,
   integer,
@@ -291,6 +292,12 @@ export const clanMessages = pgTable(
       .notNull()
       .references(() => users.id),
     body: text("body").notNull(),
+    // Nullable self-reference for swipe-to-reply — "set null" rather than "cascade" since a
+    // deleted original shouldn't take down every reply quoting it (there's no delete action for
+    // clan messages today, but this keeps the constraint safe if one is added later).
+    replyToMessageId: uuid("reply_to_message_id").references((): AnyPgColumn => clanMessages.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("clan_messages_clan_created_at_idx").on(t.clanId, t.createdAt)],

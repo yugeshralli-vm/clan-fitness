@@ -1,0 +1,2 @@
+ALTER TABLE "clan_messages" ADD COLUMN "reply_to_message_id" uuid;--> statement-breakpoint
+ALTER TABLE "clan_messages" ADD CONSTRAINT "clan_messages_reply_to_message_id_clan_messages_id_fk" FOREIGN KEY ("reply_to_message_id") REFERENCES "public"."clan_messages"("id") ON DELETE set null ON UPDATE no action;

@@ -42,8 +42,14 @@ export async function sendClanMessage(
   if (body.length > CLAN_MESSAGE_MAX_RAW_LENGTH) return { error: "Message is too long." };
   const displayText = mentionsToPlainText(body);
   if (displayText.length > CLAN_MESSAGE_MAX_LENGTH) return { error: "Message is too long." };
+  const replyToMessageId = formData.get("replyToMessageId");
 
-  await db.insert(clanMessages).values({ clanId, userId: access.userId, body });
+  await db.insert(clanMessages).values({
+    clanId,
+    userId: access.userId,
+    body,
+    replyToMessageId: typeof replyToMessageId === "string" && replyToMessageId ? replyToMessageId : undefined,
+  });
 
   const members = await getClanMembers(clanId);
   const author = members.find((m) => m.user.id === access.userId);

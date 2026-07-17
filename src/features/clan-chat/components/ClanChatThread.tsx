@@ -1,13 +1,15 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Avatar } from "@/components/shared/Avatar";
 import { MentionInput, type MentionInputHandle, type MentionMember } from "@/components/shared/MentionInput";
 import { Button } from "@/components/ui/button";
-import { parseCommentSegments } from "@/lib/mentions";
 import { fetchClanMessages, sendClanMessage } from "../actions";
 import type { ClanMessageRow } from "../queries";
 import { CLAN_MESSAGE_MAX_LENGTH } from "../types";
+import { ClanChatMessageRow } from "./ClanChatMessageRow";
+
+type ReplyingTo = { id: string; authorName: string; body: string };
 
 const POLL_INTERVAL_MS = 2000;
 
@@ -36,7 +38,8 @@ export function ClanChatThread({
   const [text, setText] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
-  const listRef = useRef<HTMLDivElement>(null);
+  const [replyingTo, setReplyingTo] = useState<ReplyingTo | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const mentionInputRef = useRef<MentionInputHandle>(null);
 
   useEffect(() => {
@@ -47,8 +50,11 @@ export function ClanChatThread({
     return () => clearInterval(interval);
   }, [clanId]);
 
+  // The list itself never overflows internally — this page scrolls at the window level (see
+  // ClanChatPage's plain flex layout, no fixed-height ancestor), so scrolling has to move the
+  // sentinel below the last message into view rather than the list div's own scroll position.
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+    bottomRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length]);
 
   // Marks this clan's chat "seen" the moment it's opened — same "visiting the page marks it seen"
@@ -75,6 +81,9 @@ export function ClanChatThread({
         authorAvatarUrl: currentUser.avatarUrl,
         body: markupBody,
         createdAt: new Date(),
+        replyToMessageId: replyingTo?.id ?? null,
+        replyToAuthorName: replyingTo?.authorName ?? null,
+        replyToBody: replyingTo?.body ?? null,
       },
     ]);
     setText("");
@@ -84,6 +93,8 @@ export function ClanChatThread({
 
     const formData = new FormData();
     formData.set("body", markupBody);
+    if (replyingTo) formData.set("replyToMessageId", replyingTo.id);
+    setReplyingTo(null);
     const result = await sendClanMessage(clanId, undefined, formData);
     setPending(false);
 
@@ -98,44 +109,23 @@ export function ClanChatThread({
 
   return (
     <div className="flex flex-1 flex-col gap-3">
-      <div ref={listRef} className="flex flex-col gap-3 overflow-y-auto pb-24">
+      <div className="flex flex-col gap-3 pb-24">
         {messages.length === 0 && (
           <p className="py-8 text-center text-sm text-foreground-tertiary">
             No messages yet — say hi to your clan.
           </p>
         )}
-        {messages.map((message) => {
-          const mine = message.userId === currentUser.id;
-          return (
-            <div key={message.id} className={`flex items-end gap-2 ${mine ? "flex-row-reverse" : ""}`}>
-              {!mine && <Avatar src={message.authorAvatarUrl} name={message.authorName} size={28} />}
-              <div className={`flex max-w-[75%] flex-col gap-0.5 ${mine ? "items-end" : "items-start"}`}>
-                {!mine && (
-                  <span className="px-1 text-xs font-semibold text-foreground-tertiary">
-                    {message.authorName}
-                  </span>
-                )}
-                <p
-                  className={`whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm ${
-                    mine
-                      ? "bg-accent text-accent-foreground"
-                      : "border border-surface-border bg-surface text-foreground-secondary"
-                  }`}
-                >
-                  {parseCommentSegments(message.body).map((segment, i) =>
-                    segment.type === "mention" ? (
-                      <span key={i} className={`font-semibold ${mine ? "" : "text-accent"}`}>
-                        @{segment.name}
-                      </span>
-                    ) : (
-                      <span key={i}>{segment.value}</span>
-                    ),
-                  )}
-                </p>
-              </div>
-            </div>
-          );
-        })}
+        {messages.map((message) => (
+          <ClanChatMessageRow
+            key={message.id}
+            message={message}
+            mine={message.userId === currentUser.id}
+            onReply={(replied) =>
+              setReplyingTo({ id: replied.id, authorName: replied.authorName, body: replied.body })
+            }
+          />
+        ))}
+        <div ref={bottomRef} />
       </div>
 
       {/* Fixed above BottomNav on mobile (BottomNav is h-16 + its own safe-area padding, hidden
@@ -143,6 +133,22 @@ export function ClanChatThread({
           content re-applies the page's own max-w-2xl/px-6 since a fixed element spans the full
           viewport width, unlike the normal-flow content around it. */}
       <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 border-t border-surface-border bg-surface sm:bottom-0">
+        {replyingTo && (
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 border-b border-surface-border px-6 py-2">
+            <div className="min-w-0 flex-1 border-l-2 border-accent pl-2">
+              <p className="text-xs font-semibold text-accent">Replying to {replyingTo.authorName}</p>
+              <p className="truncate text-xs text-foreground-tertiary">{replyingTo.body}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReplyingTo(null)}
+              aria-label="Cancel reply"
+              className="-m-2 shrink-0 p-2 text-foreground-muted hover:text-foreground"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="mx-auto flex max-w-2xl items-center gap-2 px-6 py-3">
           <MentionInput
             ref={mentionInputRef}
