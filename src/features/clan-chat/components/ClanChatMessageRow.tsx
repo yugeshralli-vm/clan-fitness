@@ -74,19 +74,22 @@ export function ClanChatMessageRow({
             }`}
           >
             {message.replyToMessageId && (
-              // max-w-[60vw]: this quote line uses `truncate` (white-space: nowrap), whose full
-              // unwrapped width otherwise gets counted as this element's max-content size — and
-              // that max-content then bubbles up through the ancestor flex boxes above (which
-              // size via fit-content, not stretch, so they don't stop it) forcing the *entire*
-              // bubble to render at that same width instead of wrapping. A viewport-relative cap
-              // bounds it independently of any ancestor's flex sizing, breaking that chain outright.
+              // max-w-[60vw]: the author-name line below still uses `truncate` (white-space:
+              // nowrap), whose full unwrapped width otherwise gets counted as this element's
+              // max-content size — and that max-content then bubbles up through the ancestor flex
+              // boxes above (which size via fit-content, not stretch, so they don't stop it),
+              // forcing the *entire* bubble to render at that width instead of wrapping. A
+              // viewport-relative cap bounds it independently of any ancestor's flex sizing,
+              // breaking that chain outright. The quoted body itself uses line-clamp instead of
+              // truncate (wraps normally, then clips after 2 lines), so it doesn't have the same
+              // nowrap-driven sizing risk — but the cap is shared/harmless either way.
               <div
                 className={`mb-1 max-w-[60vw] rounded-md border-l-2 px-2 py-1 text-xs ${
                   mine ? "border-accent-foreground/40 bg-black/10" : "border-accent/60 bg-foreground/5"
                 }`}
               >
                 <p className="truncate font-semibold">{message.replyToAuthorName ?? "Original message"}</p>
-                <p className="truncate opacity-80">{message.replyToBody}</p>
+                <p className="line-clamp-2 opacity-80">{message.replyToBody}</p>
               </div>
             )}
             <p className="whitespace-pre-wrap break-words">
