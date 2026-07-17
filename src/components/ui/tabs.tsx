@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { triggerHaptic } from "@/lib/haptics";
 
 export type TabItem = {
   id: string;
@@ -25,7 +26,10 @@ export function Tabs({ tabs, defaultTabId }: { tabs: TabItem[]; defaultTabId?: s
               aria-selected={active}
               aria-controls={`panel-${tab.id}`}
               tabIndex={active ? 0 : -1}
-              onClick={() => setActiveId(tab.id)}
+              onClick={() => {
+                triggerHaptic();
+                setActiveId(tab.id);
+              }}
               className={`min-h-9 min-w-0 flex-1 rounded-full px-3 text-sm font-semibold transition-colors ${
                 active
                   ? "bg-accent text-accent-foreground"
