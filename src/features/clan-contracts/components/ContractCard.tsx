@@ -45,7 +45,9 @@ export function ContractCard({
   const { contract, claim } = entry;
 
   return (
-    <div className={`flex h-full min-w-0 flex-col gap-2 rounded-lg border bg-surface p-3 ${TIER_BORDER[contract.tier]}`}>
+    <div
+      className={`flex h-full min-w-0 flex-col gap-2 rounded-lg border bg-surface p-3 transition-opacity duration-300 ${TIER_BORDER[contract.tier]} ${liveCompleted ? "opacity-55" : ""}`}
+    >
       {!imageFailed && (
         // Static per-contract image that may not exist yet (rolled out asset-by-asset); onError
         // swaps it out gracefully via state, which next/image doesn't support as cleanly for an
@@ -54,7 +56,7 @@ export function ContractCard({
         <img
           src={`/contracts/${contract.id}.png`}
           alt=""
-          className="aspect-square w-full rounded-md border border-surface-border/60 object-cover"
+          className={`aspect-square w-full rounded-md border border-surface-border/60 object-cover ${liveCompleted ? "grayscale" : ""}`}
           onError={() => setImageFailed(true)}
         />
       )}
