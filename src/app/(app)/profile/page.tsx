@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { Avatar } from "@/components/shared/Avatar";
 import { getAppConfig } from "@/features/admin/config";
 import { getFilteredHistory, getUserStepsByDay } from "@/features/check-ins";
-import { levelProgress, ProfileLevelSummary } from "@/features/clan-contracts";
+import { ProfileLevelSummary } from "@/features/clan-contracts";
 import { getUserGoals } from "@/features/goals";
 import { getNotificationPreferences } from "@/features/notifications/queries";
 import { ActivityHeatmap, calculateAge, calculateBmi, HistorySection, ProfileSettingsSheet } from "@/features/profile";
@@ -87,7 +87,7 @@ export default async function ProfilePage() {
         />
       </div>
 
-      <ProfileLevelSummary userId={user.id} progress={levelProgress(user.totalPoints, config)} />
+      <ProfileLevelSummary userId={user.id} totalPoints={user.totalPoints} levelCurveConfig={config} />
 
       <ActivityHeatmap days={heatmapDays} />
 

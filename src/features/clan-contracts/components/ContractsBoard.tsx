@@ -11,6 +11,26 @@ const POLL_INTERVAL_MS = 5000;
 const TIER_ORDER: ContractTier[] = [1, 2, 3];
 const TIER_TITLE: Record<ContractTier, string> = { 1: "Noob", 2: "Veteran", 3: "Legend" };
 
+function celebratedClaimsKey(userId: string) {
+  return `contract-celebrated-claims:${userId}`;
+}
+
+// Claim ids already celebrated, persisted so revisiting/remounting this page (a claim stays
+// live-completed on every poll all day, until the cron resolves it) doesn't replay the same
+// celebration — an in-memory ref alone resets on every mount.
+function loadCelebratedClaims(userId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(celebratedClaimsKey(userId));
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveCelebratedClaims(userId: string, ids: Set<string>) {
+  localStorage.setItem(celebratedClaimsKey(userId), JSON.stringify([...ids]));
+}
+
 export function ContractsBoard({
   clanId,
   initialBoard,
@@ -27,10 +47,11 @@ export function ContractsBoard({
   const [liveCompletedIds, setLiveCompletedIds] = useState<Set<string>>(new Set());
   const myClaimsToday = board.filter((entry) => entry.claim?.userId === currentUserId).length;
   const atDailyCap = myClaimsToday >= maxClaimsPerMemberPerDay;
-  // Tracks which contracts have already gotten their celebration toast, across polls — a claim
-  // stays live-completed on every subsequent poll until the cron resolves it, so without this
-  // we'd re-toast the same completion every 5s.
   const celebratedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    celebratedRef.current = loadCelebratedClaims(currentUserId);
+  }, [currentUserId]);
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -38,14 +59,15 @@ export function ContractsBoard({
       setBoard(freshBoard);
       setLiveCompletedIds(new Set(progress.filter((p) => p.completed).map((p) => p.contractId)));
       for (const item of progress) {
-        if (item.completed && !celebratedRef.current.has(item.contractId)) {
-          celebratedRef.current.add(item.contractId);
+        if (item.completed && !celebratedRef.current.has(item.claimId)) {
+          celebratedRef.current.add(item.claimId);
+          saveCelebratedClaims(currentUserId, celebratedRef.current);
           celebrate.contractComplete(item.title, item.points);
         }
       }
     }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [clanId]);
+  }, [clanId, currentUserId]);
 
   function handleClaim(contractId: string) {
     startTransition(async () => {
@@ -56,7 +78,8 @@ export function ContractsBoard({
       } else {
         setBoard(result.board);
         if (result.justCompleted) {
-          celebratedRef.current.add(contractId);
+          celebratedRef.current.add(result.justCompleted.claimId);
+          saveCelebratedClaims(currentUserId, celebratedRef.current);
           setLiveCompletedIds((prev) => new Set(prev).add(contractId));
           celebrate.contractComplete(result.justCompleted.title, result.justCompleted.points);
         }
