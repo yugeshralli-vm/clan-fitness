@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { celebrate } from "@/components/ui/reward-snackbar";
 import { toast } from "@/components/ui/toast";
-import { claimContract, fetchContractBoard, getMyLiveClaimProgress } from "../actions";
+import { claimContract, fetchContractBoard, getLiveClaimProgress } from "../actions";
 import type { ContractBoardEntry, ContractTier } from "../types";
 import { ContractCard, TierStars } from "./ContractCard";
 
@@ -35,9 +35,9 @@ function liveCompletedKey(userId: string, clanId: string) {
   return `contract-live-completed:${userId}:${clanId}`;
 }
 
-// Last known live-completed contract ids, persisted so a card that was already checked off on a
-// prior visit renders that way immediately, instead of blanking out until the first poll response
-// comes back — same reasoning as loadCelebratedClaims above.
+// Last known live-completed contract ids (clan-wide — whoever claimed it), persisted so a card
+// that was already checked off on a prior visit renders that way immediately, instead of blanking
+// out until the first poll response comes back — same reasoning as loadCelebratedClaims above.
 function loadLiveCompleted(userId: string, clanId: string): Set<string> {
   try {
     const raw = localStorage.getItem(liveCompletedKey(userId, clanId));
@@ -77,14 +77,16 @@ export function ContractsBoard({
     let cancelled = false;
 
     async function poll() {
-      const [freshBoard, progress] = await Promise.all([fetchContractBoard(clanId), getMyLiveClaimProgress(clanId)]);
+      const [freshBoard, progress] = await Promise.all([fetchContractBoard(clanId), getLiveClaimProgress(clanId)]);
       if (cancelled) return;
       setBoard(freshBoard);
       const completedIds = new Set(progress.filter((p) => p.completed).map((p) => p.contractId));
       setLiveCompletedIds(completedIds);
       saveLiveCompleted(currentUserId, clanId, completedIds);
+      // Only celebrate the viewer's own completions — seeing everyone else's claims checked off
+      // is the point of the tick, but a toast for someone else's contract would just be noise.
       for (const item of progress) {
-        if (item.completed && !celebratedRef.current.has(item.claimId)) {
+        if (item.completed && item.userId === currentUserId && !celebratedRef.current.has(item.claimId)) {
           celebratedRef.current.add(item.claimId);
           saveCelebratedClaims(currentUserId, celebratedRef.current);
           celebrate.contractComplete(item.title, item.points);

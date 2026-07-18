@@ -117,35 +117,35 @@ export async function claimContract(clanId: string, contractId: string): Promise
   return { board, justCompleted };
 }
 
-/** For the client to poll: re-checks every one of the caller's own still-"claimed" (unresolved)
- * contracts today against the live data, so a contract satisfied *after* being claimed (e.g. you
- * claim "comment on a check-in" and then go comment) can still surface a completion toast before
- * the next day's cron formally resolves it — not just contracts already true at claim time. */
-export async function getMyLiveClaimProgress(
+/** For the client to poll: re-checks every still-"claimed" (unresolved) contract in the clan today
+ * against the live data — whoever claimed it — so the board can show a checkmark the moment
+ * anyone's claim is satisfied, not just the viewer's own, and a contract satisfied *after* being
+ * claimed (e.g. you claim "comment on a check-in" and then go comment) can still surface a
+ * completion toast before the next day's cron formally resolves it. */
+export async function getLiveClaimProgress(
   clanId: string,
-): Promise<{ claimId: string; contractId: string; title: string; points: number; completed: boolean }[]> {
+): Promise<{ claimId: string; contractId: string; userId: string; title: string; points: number; completed: boolean }[]> {
   const access = await resolveAccess(clanId);
   if (!access.allowed) return [];
 
   const dayKey = userDayKey(CLAN_TIMEZONE, new Date());
-  const myClaims = await db
+  const claims = await db
     .select()
     .from(clanContractClaims)
     .where(
       and(
         eq(clanContractClaims.clanId, clanId),
-        eq(clanContractClaims.userId, access.userId),
         eq(clanContractClaims.dayKey, dayKey),
         eq(clanContractClaims.status, "claimed"),
       ),
     );
 
   return Promise.all(
-    myClaims.map(async (claim) => {
+    claims.map(async (claim) => {
       const contract = getContract(claim.contractId);
       const completed = await checkLiveCompletion(
         clanId,
-        access.userId,
+        claim.userId,
         claim.contractId,
         dayKey,
         claim.meta as Record<string, unknown> | null,
@@ -153,6 +153,7 @@ export async function getMyLiveClaimProgress(
       return {
         claimId: claim.id,
         contractId: claim.contractId,
+        userId: claim.userId,
         title: contract?.title ?? claim.contractId,
         points: contract?.points ?? 0,
         completed,
