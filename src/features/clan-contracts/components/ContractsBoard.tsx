@@ -31,6 +31,26 @@ function saveCelebratedClaims(userId: string, ids: Set<string>) {
   localStorage.setItem(celebratedClaimsKey(userId), JSON.stringify([...ids]));
 }
 
+function liveCompletedKey(userId: string, clanId: string) {
+  return `contract-live-completed:${userId}:${clanId}`;
+}
+
+// Last known live-completed contract ids, persisted so a card that was already checked off on a
+// prior visit renders that way immediately, instead of blanking out until the first poll response
+// comes back — same reasoning as loadCelebratedClaims above.
+function loadLiveCompleted(userId: string, clanId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(liveCompletedKey(userId, clanId));
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveLiveCompleted(userId: string, clanId: string, ids: Set<string>) {
+  localStorage.setItem(liveCompletedKey(userId, clanId), JSON.stringify([...ids]));
+}
+
 export function ContractsBoard({
   clanId,
   initialBoard,
@@ -44,20 +64,25 @@ export function ContractsBoard({
 }) {
   const [board, setBoard] = useState(initialBoard);
   const [pending, startTransition] = useTransition();
-  const [liveCompletedIds, setLiveCompletedIds] = useState<Set<string>>(new Set());
+  // Seeded from the last poll's result (loadCelebratedClaims/loadLiveCompleted are SSR-safe —
+  // they read localStorage in a try/catch, which throws and falls back to empty on the server) so
+  // a card already known to be live-completed renders that way immediately, instead of blanking
+  // out until the first poll response comes back.
+  const [liveCompletedIds, setLiveCompletedIds] = useState<Set<string>>(() => loadLiveCompleted(currentUserId, clanId));
   const myClaimsToday = board.filter((entry) => entry.claim?.userId === currentUserId).length;
   const atDailyCap = myClaimsToday >= maxClaimsPerMemberPerDay;
-  const celebratedRef = useRef<Set<string>>(new Set());
+  const celebratedRef = useRef<Set<string>>(loadCelebratedClaims(currentUserId));
 
   useEffect(() => {
-    celebratedRef.current = loadCelebratedClaims(currentUserId);
-  }, [currentUserId]);
+    let cancelled = false;
 
-  useEffect(() => {
-    const interval = setInterval(async () => {
+    async function poll() {
       const [freshBoard, progress] = await Promise.all([fetchContractBoard(clanId), getMyLiveClaimProgress(clanId)]);
+      if (cancelled) return;
       setBoard(freshBoard);
-      setLiveCompletedIds(new Set(progress.filter((p) => p.completed).map((p) => p.contractId)));
+      const completedIds = new Set(progress.filter((p) => p.completed).map((p) => p.contractId));
+      setLiveCompletedIds(completedIds);
+      saveLiveCompleted(currentUserId, clanId, completedIds);
       for (const item of progress) {
         if (item.completed && !celebratedRef.current.has(item.claimId)) {
           celebratedRef.current.add(item.claimId);
@@ -65,8 +90,16 @@ export function ContractsBoard({
           celebrate.contractComplete(item.title, item.points);
         }
       }
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+    }
+
+    // Runs immediately, not just on the first interval tick, so the board reflects live state
+    // right away instead of showing stale/blank data for the first 5s of every visit.
+    poll();
+    const interval = setInterval(poll, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [clanId, currentUserId]);
 
   function handleClaim(contractId: string) {
