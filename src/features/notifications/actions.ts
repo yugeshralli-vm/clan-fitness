@@ -1,12 +1,15 @@
 "use server";
 
 import { and, eq, isNull } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { notifications, pushSubscriptions } from "@/db/schema";
+import { notifications, pushSubscriptions, users } from "@/db/schema";
 import { getOrSyncCurrentUser } from "@/lib/current-user";
 import { getNotificationsForUser } from "./queries";
 import { sendTestPushNotification } from "./send";
 import type { PushSubscriptionInput } from "./types";
+
+export type NotificationPreferencesActionState = { error?: string } | undefined;
 
 export async function subscribeToPush(subscription: PushSubscriptionInput): Promise<{ error?: string }> {
   const user = await getOrSyncCurrentUser();
@@ -61,4 +64,24 @@ export async function getNotificationsAndMarkRead() {
     .where(and(eq(notifications.userId, user.id), isNull(notifications.readAt)));
 
   return items;
+}
+
+export async function updateNotificationPreferences(
+  _prevState: NotificationPreferencesActionState,
+  formData: FormData,
+): Promise<NotificationPreferencesActionState> {
+  const user = await getOrSyncCurrentUser();
+  if (!user) return { error: "Not signed in." };
+
+  await db
+    .update(users)
+    .set({
+      notifyOnComments: formData.get("notifyOnComments") === "on",
+      notifyOnMentions: formData.get("notifyOnMentions") === "on",
+      notifyOnReactions: formData.get("notifyOnReactions") === "on",
+      notifyOnCheckIns: formData.get("notifyOnCheckIns") === "on",
+    })
+    .where(eq(users.id, user.id));
+
+  revalidatePath("/profile");
 }

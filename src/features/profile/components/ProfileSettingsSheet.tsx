@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { GoalsForm } from "@/features/goals/components/GoalsForm";
-import { PushNotificationManager } from "@/features/notifications";
+import { NotificationPreferencesForm, PushNotificationManager } from "@/features/notifications";
 import { ProfileDetailsForm } from "./ProfileDetailsForm";
 import type { Gender, UnitsPreference } from "../types";
 
@@ -23,6 +23,7 @@ export function ProfileSettingsSheet({
   gender,
   unitsPreference,
   bio,
+  notificationPreferences,
 }: {
   gymTarget?: number;
   stepsTarget?: number;
@@ -34,6 +35,12 @@ export function ProfileSettingsSheet({
   gender?: Gender;
   unitsPreference: UnitsPreference;
   bio?: string;
+  notificationPreferences: {
+    notifyOnComments: boolean;
+    notifyOnMentions: boolean;
+    notifyOnReactions: boolean;
+    notifyOnCheckIns: boolean;
+  };
 }) {
   const [open, setOpen] = useState(false);
 
@@ -68,7 +75,17 @@ export function ProfileSettingsSheet({
         </>
       ),
     },
-    { id: "settings", label: "Settings", content: <PushNotificationManager /> },
+    {
+      id: "settings",
+      label: "Settings",
+      content: (
+        <>
+          <PushNotificationManager />
+          <hr className="border-surface-border" />
+          <NotificationPreferencesForm {...notificationPreferences} />
+        </>
+      ),
+    },
   ];
 
   return (
