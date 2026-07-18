@@ -10,6 +10,7 @@ import { getClanMembers, getClanMembership } from "@/features/clans/queries";
 import { userDayKey } from "@/lib/timezone-date";
 import { getContract, WAGER_STAKE } from "./catalog";
 import { getContractBoard } from "./queries";
+import { kolkataDayStart } from "./resolve";
 import type { ContractBoardEntry } from "./types";
 
 const CLAN_TIMEZONE = "Asia/Kolkata";
@@ -46,7 +47,9 @@ async function assignDuelOpponent(clanId: string, userId: string, dayKey: string
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-export type ClaimContractResult = { board: ContractBoardEntry[] } | { error: string };
+export type ClaimContractResult =
+  | { board: ContractBoardEntry[]; justCompleted?: { title: string; points: number } }
+  | { error: string };
 
 export async function claimContract(clanId: string, contractId: string): Promise<ClaimContractResult> {
   const access = await resolveAccess(clanId);
@@ -86,7 +89,19 @@ export async function claimContract(clanId: string, contractId: string): Promise
   }
 
   revalidatePath(`/clans/${clanId}/contracts`);
-  return { board: await getContractBoard(clanId, dayKey) };
+
+  // A simpler contract (e.g. "log any check-in") can already be satisfied the instant it's
+  // claimed — checking that here is purely a celebratory preview for the client, not a
+  // finalization: points are only ever actually awarded by the next day's resolution cron (see
+  // resolve.ts), since check-ins are editable same-day and this evaluation could still flip
+  // before then. This never writes status/pointsAwarded itself.
+  const board = await getContractBoard(clanId, dayKey);
+  const dayStart = kolkataDayStart(dayKey);
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  const { completed } = await contract.evaluate({ userId: access.userId, clanId, dayStart, dayEnd, meta });
+  const justCompleted = completed ? { title: contract.title, points: contract.points } : undefined;
+
+  return { board, justCompleted };
 }
 
 /** Called from the client to refresh the board (e.g. after a failed claim, or on a poll). */
