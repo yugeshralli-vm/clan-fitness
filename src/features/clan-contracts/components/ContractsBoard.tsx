@@ -8,7 +8,7 @@ import { ContractCard, TierStars } from "./ContractCard";
 
 const POLL_INTERVAL_MS = 5000;
 const TIER_ORDER: ContractTier[] = [1, 2, 3];
-const TIER_TITLE: Record<ContractTier, string> = { 1: "Easy", 2: "A challenge", 3: "Legendary" };
+const TIER_TITLE: Record<ContractTier, string> = { 1: "Noob", 2: "Veteran", 3: "Legend" };
 
 export function ContractsBoard({ clanId, initialBoard }: { clanId: string; initialBoard: ContractBoardEntry[] }) {
   const [board, setBoard] = useState(initialBoard);
