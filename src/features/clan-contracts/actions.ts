@@ -48,7 +48,7 @@ async function assignDuelOpponent(clanId: string, userId: string, dayKey: string
 }
 
 export type ClaimContractResult =
-  | { board: ContractBoardEntry[]; justCompleted?: { title: string; points: number } }
+  | { board: ContractBoardEntry[]; justCompleted?: { claimId: string; title: string; points: number } }
   | { error: string };
 
 /** Live, read-only "would this be satisfied right now" check — never writes status/pointsAwarded.
@@ -112,7 +112,7 @@ export async function claimContract(clanId: string, contractId: string): Promise
   // claimed — this is purely a celebratory preview for the client, see checkLiveCompletion.
   const board = await getContractBoard(clanId, dayKey);
   const completed = await checkLiveCompletion(clanId, access.userId, contractId, dayKey, meta);
-  const justCompleted = completed ? { title: contract.title, points: contract.points } : undefined;
+  const justCompleted = completed ? { claimId: inserted[0].id, title: contract.title, points: contract.points } : undefined;
 
   return { board, justCompleted };
 }
@@ -123,7 +123,7 @@ export async function claimContract(clanId: string, contractId: string): Promise
  * the next day's cron formally resolves it — not just contracts already true at claim time. */
 export async function getMyLiveClaimProgress(
   clanId: string,
-): Promise<{ contractId: string; title: string; points: number; completed: boolean }[]> {
+): Promise<{ claimId: string; contractId: string; title: string; points: number; completed: boolean }[]> {
   const access = await resolveAccess(clanId);
   if (!access.allowed) return [];
 
@@ -150,9 +150,48 @@ export async function getMyLiveClaimProgress(
         dayKey,
         claim.meta as Record<string, unknown> | null,
       );
-      return { contractId: claim.contractId, title: contract?.title ?? claim.contractId, points: contract?.points ?? 0, completed };
+      return {
+        claimId: claim.id,
+        contractId: claim.contractId,
+        title: contract?.title ?? claim.contractId,
+        points: contract?.points ?? 0,
+        completed,
+      };
     }),
   );
+}
+
+/** Sum of points for the caller's own still-"claimed" (unresolved) contracts today that already
+ * live-evaluate as complete, across every clan they're in — added on top of `users.totalPoints`
+ * so a member's level can reflect a contract the instant it's satisfied instead of waiting for
+ * the next day's resolution cron. Never written to the DB; purely a display-time preview, same
+ * as checkLiveCompletion, and it naturally falls back to 0 once the cron finalizes the claim. */
+export async function getMyLivePendingPoints(): Promise<number> {
+  const { userId } = await auth();
+  if (!userId) return 0;
+
+  const dayKey = userDayKey(CLAN_TIMEZONE, new Date());
+  const myClaims = await db
+    .select()
+    .from(clanContractClaims)
+    .where(and(eq(clanContractClaims.userId, userId), eq(clanContractClaims.dayKey, dayKey), eq(clanContractClaims.status, "claimed")));
+
+  const perClaim = await Promise.all(
+    myClaims.map(async (claim) => {
+      const contract = getContract(claim.contractId);
+      if (!contract) return 0;
+      const completed = await checkLiveCompletion(
+        claim.clanId,
+        userId,
+        claim.contractId,
+        dayKey,
+        claim.meta as Record<string, unknown> | null,
+      );
+      return completed ? contract.points : 0;
+    }),
+  );
+
+  return perClaim.reduce((sum, points) => sum + points, 0);
 }
 
 /** Called from the client to refresh the board (e.g. after a failed claim, or on a poll). */
