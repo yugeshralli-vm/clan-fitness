@@ -5,16 +5,16 @@ import { useState } from "react";
 import { Avatar } from "@/components/shared/Avatar";
 import type { ContractBoardEntry, ContractTier } from "../types";
 
-const TIER_CLASSES: Record<1 | 2 | 3, string> = {
-  1: "border-surface-border bg-surface",
-  2: "border-accent/60 bg-accent/15",
-  3: "border-amber-400/60 bg-gradient-to-br from-amber-400/30 to-yellow-300/25",
+const TIER_BORDER: Record<1 | 2 | 3, string> = {
+  1: "border-surface-border",
+  2: "border-accent/60",
+  3: "border-amber-400/60",
 };
 
 const TIER_STAR_CLASSES: Record<1 | 2 | 3, string> = {
   1: "text-foreground-tertiary",
   2: "text-accent",
-  3: "text-amber-500",
+  3: "text-amber-400",
 };
 
 export function TierStars({ tier, size = 10 }: { tier: ContractTier; size?: number }) {
@@ -41,7 +41,7 @@ export function ContractCard({
   const { contract, claim } = entry;
 
   return (
-    <div className={`flex h-full min-w-0 flex-col gap-2 rounded-lg border p-3 ${TIER_CLASSES[contract.tier]}`}>
+    <div className={`flex h-full min-w-0 flex-col gap-2 rounded-lg border bg-surface p-3 ${TIER_BORDER[contract.tier]}`}>
       {!imageFailed && (
         // Static per-contract image that may not exist yet (rolled out asset-by-asset); onError
         // swaps it out gracefully via state, which next/image doesn't support as cleanly for an
