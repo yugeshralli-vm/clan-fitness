@@ -10,9 +10,21 @@ const POLL_INTERVAL_MS = 5000;
 const TIER_ORDER: ContractTier[] = [1, 2, 3];
 const TIER_TITLE: Record<ContractTier, string> = { 1: "Noob", 2: "Veteran", 3: "Legend" };
 
-export function ContractsBoard({ clanId, initialBoard }: { clanId: string; initialBoard: ContractBoardEntry[] }) {
+export function ContractsBoard({
+  clanId,
+  initialBoard,
+  currentUserId,
+  maxClaimsPerMemberPerDay,
+}: {
+  clanId: string;
+  initialBoard: ContractBoardEntry[];
+  currentUserId: string;
+  maxClaimsPerMemberPerDay: number;
+}) {
   const [board, setBoard] = useState(initialBoard);
   const [pending, startTransition] = useTransition();
+  const myClaimsToday = board.filter((entry) => entry.claim?.userId === currentUserId).length;
+  const atDailyCap = myClaimsToday >= maxClaimsPerMemberPerDay;
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -46,7 +58,13 @@ export function ContractsBoard({ clanId, initialBoard }: { clanId: string; initi
             </h2>
             <div className="grid grid-cols-2 gap-3">
               {entries.map((entry) => (
-                <ContractCard key={entry.contract.id} entry={entry} pending={pending} onClaim={handleClaim} />
+                <ContractCard
+                  key={entry.contract.id}
+                  entry={entry}
+                  pending={pending}
+                  onClaim={handleClaim}
+                  claimDisabled={atDailyCap}
+                />
               ))}
             </div>
           </div>

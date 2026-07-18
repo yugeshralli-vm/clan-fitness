@@ -31,10 +31,12 @@ export function ContractCard({
   entry,
   pending,
   onClaim,
+  claimDisabled,
 }: {
   entry: ContractBoardEntry;
   pending: boolean;
   onClaim: (contractId: string) => void;
+  claimDisabled: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
@@ -88,6 +90,10 @@ export function ContractCard({
             {pending ? "Claiming…" : "Confirm"}
           </button>
         </div>
+      ) : claimDisabled ? (
+        <p className="mt-1 rounded-md border border-dashed border-surface-border px-2 py-1.5 text-center text-xs text-foreground-tertiary">
+          Come back tomorrow
+        </p>
       ) : (
         <button
           type="button"
