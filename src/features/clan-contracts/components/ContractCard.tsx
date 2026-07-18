@@ -7,8 +7,8 @@ import type { ContractBoardEntry, ContractTier } from "../types";
 
 const TIER_CLASSES: Record<1 | 2 | 3, string> = {
   1: "border-surface-border bg-surface",
-  2: "border-accent/50 bg-accent/5",
-  3: "border-amber-400/50 bg-gradient-to-br from-amber-400/10 to-yellow-300/10 shadow-[0_0_0_1px_rgba(251,191,36,0.15)]",
+  2: "border-accent/60 bg-accent/15",
+  3: "border-amber-400/60 bg-gradient-to-br from-amber-400/30 to-yellow-300/25",
 };
 
 const TIER_STAR_CLASSES: Record<1 | 2 | 3, string> = {
