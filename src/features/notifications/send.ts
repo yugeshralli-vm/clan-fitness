@@ -7,9 +7,19 @@ import { notifications, pushSubscriptions, users } from "@/db/schema";
 import { logNotificationDelivery } from "./delivery-log";
 import { getPushSubscriptionsForUser, getUnreadNotificationCount } from "./queries";
 import { sendEmailNotification } from "./send-email";
-import type { NotificationPayload } from "./types";
+import type { NotificationPayload, NotificationType } from "./types";
 
 let vapidConfigured = false;
+
+// `missed_log`, `nudge`, `feedback`, `broadcast`, `weekly_recap`, `clan_message`, and `reply` are
+// intentionally absent — no user-facing toggle exists for them (yet), so an absent key means
+// "always deliver" rather than risk silently suppressing a type nobody can currently opt back into.
+const PREFERENCE_KEYS = {
+  comment: "notifyOnComments",
+  mention: "notifyOnMentions",
+  reaction: "notifyOnReactions",
+  check_in: "notifyOnCheckIns",
+} as const satisfies Partial<Record<NotificationType, string>>;
 
 /**
  * Configures web-push lazily, on first send, rather than at module load. VAPID env vars live
@@ -108,7 +118,16 @@ export async function notifyUser(
   options?: { skipEmail?: boolean },
 ) {
   const [[user], unreadBefore] = await Promise.all([
-    db.select({ email: users.email }).from(users).where(eq(users.id, userId)),
+    db
+      .select({
+        email: users.email,
+        notifyOnComments: users.notifyOnComments,
+        notifyOnMentions: users.notifyOnMentions,
+        notifyOnReactions: users.notifyOnReactions,
+        notifyOnCheckIns: users.notifyOnCheckIns,
+      })
+      .from(users)
+      .where(eq(users.id, userId)),
     getUnreadNotificationCount(userId),
   ]);
   // This call always inserts exactly one new unread notification below, so the post-send count
@@ -116,9 +135,16 @@ export async function notifyUser(
   // accurate home-screen app badge (see sw.js's push handler) without adding to the send's latency.
   const unreadCount = unreadBefore + 1;
 
+  // Preference only gates push/email — the in-app notification (bell + badge, via
+  // persistNotification below) always records regardless, so nothing is ever silently lost.
+  const prefKey = PREFERENCE_KEYS[payload.type as keyof typeof PREFERENCE_KEYS];
+  const alertsEnabled = prefKey ? (user?.[prefKey] ?? true) : true;
+
   await Promise.all([
-    sendPushNotifications(userId, { ...payload, unreadCount }),
-    user?.email && !options?.skipEmail ? sendEmailNotification(userId, user.email, payload) : Promise.resolve(),
+    alertsEnabled ? sendPushNotifications(userId, { ...payload, unreadCount }) : Promise.resolve(),
+    alertsEnabled && user?.email && !options?.skipEmail
+      ? sendEmailNotification(userId, user.email, payload)
+      : Promise.resolve(),
     persistNotification(userId, payload),
   ]);
 }

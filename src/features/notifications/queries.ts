@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, count, desc, eq, gte, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { notifications, pushSubscriptions } from "@/db/schema";
+import { notifications, pushSubscriptions, users } from "@/db/schema";
 import { startOfUserDay } from "@/lib/timezone-date";
 
 export type NotificationRow = typeof notifications.$inferSelect;
@@ -42,4 +42,17 @@ export async function getUnreadNotificationCount(userId: string) {
     .from(notifications)
     .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
   return row?.count ?? 0;
+}
+
+export async function getNotificationPreferences(userId: string) {
+  const [prefs] = await db
+    .select({
+      notifyOnComments: users.notifyOnComments,
+      notifyOnMentions: users.notifyOnMentions,
+      notifyOnReactions: users.notifyOnReactions,
+      notifyOnCheckIns: users.notifyOnCheckIns,
+    })
+    .from(users)
+    .where(eq(users.id, userId));
+  return prefs ?? null;
 }

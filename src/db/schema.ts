@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
+  boolean,
   date,
   index,
   integer,
@@ -42,6 +43,12 @@ export const users = pgTable("users", {
   // TimezoneSync.tsx) — powers per-user day boundaries for check-in dedup/streaks/nudge guard (see
   // src/lib/timezone-date.ts). Default matches DEFAULT_TIMEZONE there; keep both in sync.
   timezone: text("timezone").notNull().default("Asia/Kolkata"),
+  // Per-type opt-out for push/email delivery only — the in-app notification (bell + badge) always
+  // records regardless, so nothing is ever silently lost, only the noisier channels are gated.
+  notifyOnComments: boolean("notify_on_comments").notNull().default(true),
+  notifyOnMentions: boolean("notify_on_mentions").notNull().default(true),
+  notifyOnReactions: boolean("notify_on_reactions").notNull().default(true),
+  notifyOnCheckIns: boolean("notify_on_check_ins").notNull().default(true),
 });
 
 export const clans = pgTable("clans", {

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Avatar } from "@/components/shared/Avatar";
 import { getFilteredHistory, getUserStepsByDay } from "@/features/check-ins";
 import { getUserGoals } from "@/features/goals";
+import { getNotificationPreferences } from "@/features/notifications/queries";
 import { ActivityHeatmap, calculateAge, calculateBmi, HistorySection, ProfileSettingsSheet } from "@/features/profile";
 import type { HeatmapDay } from "@/features/profile";
 import { getOrSyncCurrentUser } from "@/lib/current-user";
@@ -18,10 +19,11 @@ export default async function ProfilePage() {
   const monthStart = startOfUserMonth(user.timezone, now);
   const tomorrowStart = new Date(startOfUserDay(user.timezone, now).getTime() + 24 * 60 * 60 * 1000);
 
-  const [goals, stepsByDay, history] = await Promise.all([
+  const [goals, stepsByDay, history, notificationPreferences] = await Promise.all([
     getUserGoals(user.id),
     getUserStepsByDay(user.id, { start: monthStart, end: tomorrowStart }, user.timezone),
     getFilteredHistory("all", "30d"),
+    getNotificationPreferences(user.id),
   ]);
 
   const gymGoal = goals.find((g) => g.type === "gym");
@@ -73,6 +75,12 @@ export default async function ProfilePage() {
           gender={user.gender ?? undefined}
           unitsPreference={unitsPreference}
           bio={user.bio ?? undefined}
+          notificationPreferences={{
+            notifyOnComments: notificationPreferences?.notifyOnComments ?? true,
+            notifyOnMentions: notificationPreferences?.notifyOnMentions ?? true,
+            notifyOnReactions: notificationPreferences?.notifyOnReactions ?? true,
+            notifyOnCheckIns: notificationPreferences?.notifyOnCheckIns ?? true,
+          }}
         />
       </div>
 
