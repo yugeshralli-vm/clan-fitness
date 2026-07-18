@@ -22,7 +22,7 @@ export default async function ClanContractsPage({ params }: { params: Promise<{ 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-8">
       <div className="flex items-center gap-3">
-        <Link href={`/clans/${clanId}`} aria-label="Back to clan" className="text-foreground-secondary">
+        <Link href={`/clans/${clanId}/manage`} aria-label="Back to clan" className="text-foreground-secondary">
           <ArrowLeft size={20} />
         </Link>
         <h1 className="text-xl font-bold text-foreground">{clan.name} contracts</h1>
