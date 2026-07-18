@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
 import { getAppConfig } from "@/features/admin";
+import { ContractsCard } from "@/features/clan-contracts";
 import {
   computeLeaderboard,
   daysInMonth,
@@ -105,6 +106,7 @@ export default async function ManageClanPage({ params }: { params: Promise<{ cla
           isAdmin={isAdmin}
           currentUserId={userId}
           loggedToday={loggedToday}
+          levelCurveConfig={config}
         />
       ),
     },
@@ -130,6 +132,8 @@ export default async function ManageClanPage({ params }: { params: Promise<{ cla
           </div>
         )}
       </div>
+
+      <ContractsCard clanId={clanId} />
 
       <Tabs tabs={tabs} />
     </div>

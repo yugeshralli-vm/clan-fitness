@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { Avatar } from "@/components/shared/Avatar";
+import { LevelBadge } from "@/components/shared/LevelBadge";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { makeAdmin, nudgeMember, removeMember } from "../actions";
@@ -13,6 +14,7 @@ export function MemberActionsSheet({
   memberUserId,
   memberName,
   memberAvatarUrl,
+  memberLevel,
   loggedToday,
   canNudge,
 }: {
@@ -20,6 +22,7 @@ export function MemberActionsSheet({
   memberUserId: string;
   memberName: string;
   memberAvatarUrl?: string | null;
+  memberLevel: number;
   loggedToday: boolean;
   canNudge: boolean;
 }) {
@@ -47,7 +50,10 @@ export function MemberActionsSheet({
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
         >
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm text-foreground">{memberName}</p>
+            <p className="flex min-w-0 items-center gap-1.5 truncate text-sm text-foreground">
+              {memberName}
+              <LevelBadge level={memberLevel} />
+            </p>
             <p className={`text-xs ${loggedToday ? "text-foreground-tertiary" : "text-danger"}`}>
               {loggedToday ? "Logged today" : "Not logged yet"}
             </p>
@@ -60,7 +66,10 @@ export function MemberActionsSheet({
         <div className="flex flex-col gap-6">
           <Link href={`/members/${memberUserId}`} className="flex items-center gap-3" onClick={() => setOpen(false)}>
             <Avatar src={memberAvatarUrl} name={memberName} size={48} />
-            <span className="text-lg font-semibold text-foreground">{memberName}</span>
+            <span className="flex items-center gap-1.5 text-lg font-semibold text-foreground">
+              {memberName}
+              <LevelBadge level={memberLevel} />
+            </span>
           </Link>
 
           <div className="flex flex-col gap-2">

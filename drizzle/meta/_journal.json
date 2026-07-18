@@ -169,6 +169,13 @@
       "when": 1784360418030,
       "tag": "0023_real_exodus",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1784363326828,
+      "tag": "0024_overjoyed_zzzax",
+      "breakpoints": true
     }
   ]
 }

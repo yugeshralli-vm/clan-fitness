@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/shared/Avatar";
+import { LevelBadge } from "@/components/shared/LevelBadge";
 import { PhotoCarousel } from "@/components/ui/photo-carousel";
 import type { FeedRow } from "@/features/check-ins";
 import { getFoodPhotoUrls } from "@/features/check-ins/types";
@@ -11,6 +12,7 @@ import type { FoodCheckInValue, ThoughtCheckInValue } from "@/features/check-ins
 import { CommentSheet } from "@/features/comments/components/CommentSheet";
 import type { ClanMemberOption } from "@/features/comments/components/CommentThread";
 import type { CommentWithUser } from "@/features/comments/queries";
+import { levelForPoints, type LevelCurveConfig } from "@/features/clan-contracts/level";
 import { ReactionBar } from "@/features/reactions/components/ReactionBar";
 import type { ReactionSummary } from "@/features/reactions/types";
 import { toast } from "@/components/ui/toast";
@@ -46,6 +48,7 @@ export function FeedList({
   initialComments,
   initialHasMore,
   highlightCheckInId,
+  levelCurveConfig,
 }: {
   clanId: string;
   currentUserId?: string | null;
@@ -56,6 +59,7 @@ export function FeedList({
   initialReactions: Record<string, ReactionSummary>;
   initialComments: Record<string, CommentWithUser[]>;
   initialHasMore: boolean;
+  levelCurveConfig: LevelCurveConfig;
   highlightCheckInId?: string;
 }) {
   const [rows, setRows] = useState(initialRows);
@@ -152,12 +156,15 @@ export function FeedList({
                   </Link>
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
                     <div className="flex items-center justify-between gap-2">
-                      <Link
-                        href={`/members/${group.user.id}`}
-                        className="min-w-0 truncate text-sm font-semibold text-foreground"
-                      >
-                        {group.user.name}
-                      </Link>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <Link
+                          href={`/members/${group.user.id}`}
+                          className="min-w-0 truncate text-sm font-semibold text-foreground"
+                        >
+                          {group.user.name}
+                        </Link>
+                        <LevelBadge level={levelForPoints(group.user.totalPoints, levelCurveConfig)} />
+                      </div>
                       <time
                         className="shrink-0 text-xs text-foreground-muted"
                         dateTime={group.latestAt.toISOString()}

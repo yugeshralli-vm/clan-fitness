@@ -49,6 +49,10 @@ export const users = pgTable("users", {
   notifyOnMentions: boolean("notify_on_mentions").notNull().default(true),
   notifyOnReactions: boolean("notify_on_reactions").notNull().default(true),
   notifyOnCheckIns: boolean("notify_on_check_ins").notNull().default(true),
+  // Permanent EXP from completed clan contracts (see src/features/clan-contracts) — always
+  // accumulating, never decremented or spent. Profile level is a pure function of this value
+  // (see levelForPoints), not stored separately, so it can never drift out of sync.
+  totalPoints: integer("total_points").notNull().default(0),
 });
 
 export const clans = pgTable("clans", {
@@ -313,6 +317,47 @@ export const clanMessages = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("clan_messages_clan_created_at_idx").on(t.clanId, t.createdAt)],
+);
+
+export const contractClaimStatusEnum = pgEnum("contract_claim_status", [
+  "claimed",
+  "completed",
+  "failed",
+]);
+
+// One row per member claiming one of the 21 static, code-defined daily contracts (see
+// src/features/clan-contracts/catalog.ts — contractId is a stable slug from that catalog, not a
+// foreign key, since contract definitions live in code, not the DB). dayKey is the clan's shared
+// day boundary (Asia/Kolkata), not the claimant's own timezone — the board is clan-wide, not a
+// personal record, so claiming/resetting needs one canonical "day" per clan. pointsAwarded is
+// null until the daily resolution cron finalizes it (can end up negative for a failed wager).
+export const clanContractClaims = pgTable(
+  "clan_contract_claims",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    clanId: uuid("clan_id")
+      .notNull()
+      .references(() => clans.id),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    contractId: text("contract_id").notNull(),
+    dayKey: text("day_key").notNull(),
+    status: contractClaimStatusEnum("status").notNull().default("claimed"),
+    pointsAwarded: integer("points_awarded"),
+    // Duel opponentUserId, wager stake amount — shape varies per contract, see catalog.ts.
+    meta: jsonb("meta"),
+    claimedAt: timestamp("claimed_at").defaultNow().notNull(),
+    resolvedAt: timestamp("resolved_at"),
+  },
+  (t) => [
+    // The claim lock itself: a plain INSERT ... ON CONFLICT DO NOTHING targeting this index is
+    // what makes "only one member can claim this contract today" race-safe without a transaction
+    // (Neon's HTTP driver doesn't support them).
+    uniqueIndex("clan_contract_claims_clan_contract_day_idx").on(t.clanId, t.contractId, t.dayKey),
+    // Cheap check for the per-member daily claim cap (maxClaimsPerMemberPerDay in appConfig).
+    index("clan_contract_claims_clan_user_day_idx").on(t.clanId, t.userId, t.dayKey),
+  ],
 );
 
 export const broadcastTargetTypeEnum = pgEnum("broadcast_target_type", ["clan", "user"]);

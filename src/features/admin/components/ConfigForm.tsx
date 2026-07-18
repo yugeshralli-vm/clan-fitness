@@ -14,6 +14,9 @@ const FIELDS: { key: ConfigKey; label: string; step?: string }[] = [
   { key: "streakCapDays", label: "Streak cap (days)" },
   { key: "defaultWeeklyGymTarget", label: "Default gym target (days/week)" },
   { key: "defaultDailyStepsTarget", label: "Default steps target (per day)" },
+  { key: "maxClaimsPerMemberPerDay", label: "Max contract claims per member per day" },
+  { key: "levelCurveK", label: "Level curve K" },
+  { key: "levelCurveExponent", label: "Level curve exponent", step: "0.01" },
 ];
 
 export function ConfigForm({ config }: { config: Record<ConfigKey, number> }) {

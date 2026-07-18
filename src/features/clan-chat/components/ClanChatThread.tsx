@@ -31,7 +31,7 @@ export function ClanChatThread({
   initialMessages,
 }: {
   clanId: string;
-  currentUser: { id: string; name: string; avatarUrl: string | null };
+  currentUser: { id: string; name: string; avatarUrl: string | null; level: number };
   members: MentionMember[];
   initialMessages: ClanMessageRow[];
 }) {
@@ -80,6 +80,7 @@ export function ClanChatThread({
         userId: currentUser.id,
         authorName: currentUser.name,
         authorAvatarUrl: currentUser.avatarUrl,
+        authorLevel: currentUser.level,
         body: markupBody,
         createdAt: new Date(),
         replyToMessageId: replyingTo?.id ?? null,

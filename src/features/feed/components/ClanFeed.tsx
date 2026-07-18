@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
+import { getAppConfig } from "@/features/admin/config";
 import { getCommentsForCheckIns, getCommentsForSystemPosts } from "@/features/comments";
 import { getCheckInById, getClanFeed } from "@/features/check-ins";
 import { getClanMembers } from "@/features/clans";
@@ -61,12 +62,13 @@ export async function ClanFeed({
 
   const checkInIds = rows.map((row) => row.checkIn.id);
   const systemPostIds = systemPosts.map((post) => post.id);
-  const [reactions, comments, systemPostReactions, systemPostComments, members] = await Promise.all([
+  const [reactions, comments, systemPostReactions, systemPostComments, members, levelCurveConfig] = await Promise.all([
     userId ? getReactionsForCheckIns(checkInIds, clanId, userId) : Promise.resolve({}),
     getCommentsForCheckIns(checkInIds, clanId),
     userId ? getReactionsForSystemPosts(systemPostIds, clanId, userId) : Promise.resolve({}),
     getCommentsForSystemPosts(systemPostIds, clanId),
     membersPromise,
+    getAppConfig(),
   ]);
   const clanMembers = members.map((m) => ({ id: m.user.id, name: m.user.name, avatarUrl: m.user.avatarUrl }));
 
@@ -82,6 +84,7 @@ export async function ClanFeed({
       initialComments={{ ...comments, ...systemPostComments }}
       initialHasMore={hasMore}
       highlightCheckInId={highlightCheckInId}
+      levelCurveConfig={levelCurveConfig}
     />
   );
 }
