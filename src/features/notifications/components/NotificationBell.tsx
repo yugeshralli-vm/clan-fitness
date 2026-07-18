@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, AtSign, Bell, Heart, Megaphone, MessageCircle, MessageSquare, Reply, Trophy, Zap } from "lucide-react";
+import { Activity, AtSign, Bell, Heart, Megaphone, MessageCircle, MessageSquare, Reply, Star, Trophy, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Suspense, use, useEffect, useState, useTransition, type ComponentType } from "react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -22,6 +22,7 @@ const TYPE_ICON: Record<NotificationType, ComponentType<{ size?: number; classNa
   weekly_recap: Trophy,
   clan_message: MessageSquare,
   reply: Reply,
+  contract: Star,
 };
 
 export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: Promise<number> }) {

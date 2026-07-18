@@ -11,9 +11,10 @@ import type { NotificationPayload, NotificationType } from "./types";
 
 let vapidConfigured = false;
 
-// `missed_log`, `nudge`, `feedback`, `broadcast`, `weekly_recap`, `clan_message`, and `reply` are
-// intentionally absent — no user-facing toggle exists for them (yet), so an absent key means
-// "always deliver" rather than risk silently suppressing a type nobody can currently opt back into.
+// `missed_log`, `nudge`, `feedback`, `broadcast`, `weekly_recap`, `clan_message`, `reply`, and
+// `contract` are intentionally absent — no user-facing toggle exists for them (yet), so an absent
+// key means "always deliver" rather than risk silently suppressing a type nobody can currently
+// opt back into.
 const PREFERENCE_KEYS = {
   comment: "notifyOnComments",
   mention: "notifyOnMentions",

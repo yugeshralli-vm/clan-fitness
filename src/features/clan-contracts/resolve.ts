@@ -3,6 +3,7 @@ import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { clanContractClaims, users } from "@/db/schema";
+import { notifyUser } from "@/features/notifications/send";
 import { getContract } from "./catalog";
 
 // Asia/Kolkata never observes DST (fixed +05:30 year-round), so a dayKey's local midnight can be
@@ -60,6 +61,18 @@ export async function resolveContractsForClan(clanId: string, dayKey: string): P
         .set({ totalPoints: sql`${users.totalPoints} + ${pointsAwarded}` })
         .where(eq(users.id, claim.userId));
       totalPointsAwarded += pointsAwarded;
+
+      // Only the finalized outcome is worth a notification — the live preview toast at claim
+      // time deliberately never sends one, since it can still flip before this cron runs.
+      await notifyUser(claim.userId, {
+        type: "contract",
+        title: pointsAwarded > 0 ? `${contract.title} complete!` : `${contract.title} — missed it`,
+        body:
+          pointsAwarded > 0
+            ? `You earned ${pointsAwarded}pt${pointsAwarded === 1 ? "" : "s"}.`
+            : `You lost your ${Math.abs(pointsAwarded)}pt stake.`,
+        url: `/clans/${clanId}/contracts`,
+      });
     }
   }
 
