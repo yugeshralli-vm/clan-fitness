@@ -57,16 +57,6 @@ export async function hasAllThreeCategories(userId: string, start: Date, end: Da
   return types.has("gym") && types.has("steps") && types.has("food");
 }
 
-export async function hasCheckInBefore(userId: string, dayStart: Date, hourCutoff: number): Promise<boolean> {
-  const cutoff = new Date(dayStart.getTime() + hourCutoff * 60 * 60 * 1000);
-  const rows = await db
-    .select({ id: checkIns.id })
-    .from(checkIns)
-    .where(and(eq(checkIns.userId, userId), gte(checkIns.createdAt, dayStart), lt(checkIns.createdAt, cutoff)))
-    .limit(1);
-  return rows.length > 0;
-}
-
 /** "Ate well all day" — the food check-in's yes/no/partial status is the closest thing this app's
  * schema has to a per-meal breakdown; "yes" is treated as the full-marks answer. */
 export async function hasFullFoodStatus(userId: string, start: Date, end: Date): Promise<boolean> {

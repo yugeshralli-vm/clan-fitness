@@ -7,7 +7,6 @@ import {
   getStepsAverageBefore,
   getStepsInWindow,
   hasAllThreeCategories,
-  hasCheckInBefore,
   hasCheckInInWindow,
   hasCommentedOnOthersCheckIn,
   hasFullFoodStatus,
@@ -136,13 +135,14 @@ export const CONTRACT_CATALOG: ContractDefinition[] = [
     },
   },
   {
-    id: "early-bird-8am",
+    id: "steps-10k",
     tier: 2,
     points: 30,
-    title: "Early bird",
-    description: "Check in before 8am.",
-    async evaluate({ userId, dayStart }) {
-      const completed = await hasCheckInBefore(userId, dayStart, 8);
+    title: "10k steps",
+    description: "Hit 10,000 steps today.",
+    async evaluate({ userId, dayStart, dayEnd }) {
+      const today = await getStepsInWindow(userId, dayStart, dayEnd);
+      const completed = today >= 10_000;
       return { completed, pointsAwarded: completed ? 30 : 0 };
     },
   },
@@ -284,13 +284,14 @@ export const CONTRACT_CATALOG: ContractDefinition[] = [
     },
   },
   {
-    id: "early-bird-6am",
+    id: "steps-20k",
     tier: 3,
     points: 100,
-    title: "Before sunrise",
-    description: "Check in before 6am.",
-    async evaluate({ userId, dayStart }) {
-      const completed = await hasCheckInBefore(userId, dayStart, 6);
+    title: "20k steps",
+    description: "Hit 20,000 steps today.",
+    async evaluate({ userId, dayStart, dayEnd }) {
+      const today = await getStepsInWindow(userId, dayStart, dayEnd);
+      const completed = today >= 20_000;
       return { completed, pointsAwarded: completed ? 100 : 0 };
     },
   },
