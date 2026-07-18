@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { Avatar } from "@/components/shared/Avatar";
+import { getAppConfig } from "@/features/admin/config";
 import { getFilteredHistory, getUserStepsByDay } from "@/features/check-ins";
+import { levelProgress, ProfileLevelSummary } from "@/features/clan-contracts";
 import { getUserGoals } from "@/features/goals";
 import { getNotificationPreferences } from "@/features/notifications/queries";
 import { ActivityHeatmap, calculateAge, calculateBmi, HistorySection, ProfileSettingsSheet } from "@/features/profile";
@@ -19,11 +21,12 @@ export default async function ProfilePage() {
   const monthStart = startOfUserMonth(user.timezone, now);
   const tomorrowStart = new Date(startOfUserDay(user.timezone, now).getTime() + 24 * 60 * 60 * 1000);
 
-  const [goals, stepsByDay, history, notificationPreferences] = await Promise.all([
+  const [goals, stepsByDay, history, notificationPreferences, config] = await Promise.all([
     getUserGoals(user.id),
     getUserStepsByDay(user.id, { start: monthStart, end: tomorrowStart }, user.timezone),
     getFilteredHistory("all", "30d"),
     getNotificationPreferences(user.id),
+    getAppConfig(),
   ]);
 
   const gymGoal = goals.find((g) => g.type === "gym");
@@ -83,6 +86,8 @@ export default async function ProfilePage() {
           }}
         />
       </div>
+
+      <ProfileLevelSummary userId={user.id} progress={levelProgress(user.totalPoints, config)} />
 
       <ActivityHeatmap days={heatmapDays} />
 

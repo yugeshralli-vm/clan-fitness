@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
+import { ContractsCard } from "@/features/clan-contracts";
 import { getClanById, getClanMembers } from "@/features/clans";
 import { ClanFeed } from "@/features/feed";
 
@@ -30,6 +31,7 @@ export default async function ClanPage({
           {members.length}/{clan.maxSize} members
         </p>
       </div>
+      <ContractsCard clanId={clanId} />
       <ClanFeed clanId={clanId} highlightCheckInId={checkIn} members={members} />
     </div>
   );

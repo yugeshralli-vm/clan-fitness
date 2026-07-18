@@ -105,6 +105,7 @@ export default async function ManageClanPage({ params }: { params: Promise<{ cla
           isAdmin={isAdmin}
           currentUserId={userId}
           loggedToday={loggedToday}
+          levelCurveConfig={config}
         />
       ),
     },

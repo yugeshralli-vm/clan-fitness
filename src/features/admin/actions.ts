@@ -43,6 +43,21 @@ export async function updateAppConfig(
     return { error: "Default steps target must be a positive whole number." };
   }
 
+  const maxClaimsPerMemberPerDay = Number(formData.get("maxClaimsPerMemberPerDay"));
+  if (!Number.isInteger(maxClaimsPerMemberPerDay) || maxClaimsPerMemberPerDay < 1 || maxClaimsPerMemberPerDay > 21) {
+    return { error: "Max claims per member per day must be a whole number between 1 and 21." };
+  }
+
+  const levelCurveK = Number(formData.get("levelCurveK"));
+  if (!Number.isFinite(levelCurveK) || levelCurveK <= 0) {
+    return { error: "Level curve K must be a positive number." };
+  }
+
+  const levelCurveExponent = Number(formData.get("levelCurveExponent"));
+  if (!Number.isFinite(levelCurveExponent) || levelCurveExponent <= 0) {
+    return { error: "Level curve exponent must be a positive number." };
+  }
+
   const values: Record<ConfigKey, number> = {
     stepWeight,
     streakWeight,
@@ -50,6 +65,9 @@ export async function updateAppConfig(
     streakCapDays,
     defaultWeeklyGymTarget,
     defaultDailyStepsTarget,
+    maxClaimsPerMemberPerDay,
+    levelCurveK,
+    levelCurveExponent,
   };
 
   await Promise.all(

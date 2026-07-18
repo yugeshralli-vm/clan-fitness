@@ -13,6 +13,11 @@ const CONFIG_DEFAULTS = {
   streakCapDays: 7,
   defaultWeeklyGymTarget: 4,
   defaultDailyStepsTarget: 8000,
+  // Clan contracts (src/features/clan-contracts) — see levelForPoints for how the latter two
+  // shape the profile level curve.
+  maxClaimsPerMemberPerDay: 1,
+  levelCurveK: 276,
+  levelCurveExponent: 1.05,
 } as const;
 
 export type ConfigKey = keyof typeof CONFIG_DEFAULTS;

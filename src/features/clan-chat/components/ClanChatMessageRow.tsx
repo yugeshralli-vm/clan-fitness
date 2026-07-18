@@ -5,6 +5,7 @@ import { motion, useMotionValue, useTransform } from "motion/react";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/shared/Avatar";
+import { LevelBadge } from "@/components/shared/LevelBadge";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { toast } from "@/components/ui/toast";
 import { toggleClanMessageReaction } from "@/features/reactions/actions";
@@ -123,12 +124,12 @@ export function ClanChatMessageRow({
         )}
         <div className={`flex min-w-0 max-w-[75%] flex-col gap-0.5 ${mine ? "items-end" : "items-start"}`}>
           {!mine && (
-            <Link
-              href={`/members/${message.userId}`}
-              className="px-1 text-xs font-semibold text-foreground-tertiary"
-            >
-              {message.authorName}
-            </Link>
+            <div className="flex items-center gap-1 px-1">
+              <Link href={`/members/${message.userId}`} className="text-xs font-semibold text-foreground-tertiary">
+                {message.authorName}
+              </Link>
+              <LevelBadge level={message.authorLevel} />
+            </div>
           )}
           <div
             onClick={openReactorSheet}

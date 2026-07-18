@@ -4,6 +4,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { clanMessages, users } from "@/db/schema";
+import { getAppConfig } from "@/features/admin/config";
+import { levelForPoints } from "@/features/clan-contracts/level";
 import { getReactionsForClanMessages } from "@/features/reactions/queries";
 import type { ReactionSummary } from "@/features/reactions/types";
 
@@ -13,6 +15,7 @@ export type ClanMessageRow = {
   userId: string;
   authorName: string;
   authorAvatarUrl: string | null;
+  authorLevel: number;
   body: string;
   createdAt: Date;
   replyToMessageId: string | null;
@@ -39,6 +42,7 @@ export async function getClanMessages(clanId: string, currentUserId: string): Pr
       userId: clanMessages.userId,
       authorName: users.name,
       authorAvatarUrl: users.avatarUrl,
+      authorTotalPoints: users.totalPoints,
       body: clanMessages.body,
       createdAt: clanMessages.createdAt,
       replyToMessageId: clanMessages.replyToMessageId,
@@ -61,14 +65,17 @@ export async function getClanMessages(clanId: string, currentUserId: string): Pr
   // One extra batched query for the whole page, not one per message — same shape as
   // getReactionsForCheckIns — merged in here so it rides along on the existing 2s poll
   // (fetchClanMessages just re-calls this) instead of needing separate client-side plumbing.
-  const reactionSummaries = await getReactionsForClanMessages(
-    rows.map((row) => row.id),
-    clanId,
-    currentUserId,
-  );
+  const [reactionSummaries, config] = await Promise.all([
+    getReactionsForClanMessages(rows.map((row) => row.id), clanId, currentUserId),
+    getAppConfig(),
+  ]);
 
   return rows
-    .map((row) => ({ ...row, reactionsSummary: reactionSummaries[row.id] ?? {} }))
+    .map(({ authorTotalPoints, ...row }) => ({
+      ...row,
+      authorLevel: levelForPoints(authorTotalPoints, config),
+      reactionsSummary: reactionSummaries[row.id] ?? {},
+    }))
     .reverse();
 }
 

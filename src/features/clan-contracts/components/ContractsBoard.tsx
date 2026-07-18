@@ -1,0 +1,54 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import { toast } from "@/components/ui/toast";
+import { claimContract, fetchContractBoard } from "../actions";
+import type { ContractBoardEntry, ContractTier } from "../types";
+import { ContractCard } from "./ContractCard";
+
+const POLL_INTERVAL_MS = 5000;
+const TIER_ORDER: ContractTier[] = [1, 2, 3];
+const TIER_TITLE: Record<ContractTier, string> = { 1: "Tier 1 — Easy", 2: "Tier 2 — A challenge", 3: "Tier 3 — Legendary" };
+
+export function ContractsBoard({ clanId, initialBoard }: { clanId: string; initialBoard: ContractBoardEntry[] }) {
+  const [board, setBoard] = useState(initialBoard);
+  const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      setBoard(await fetchContractBoard(clanId));
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [clanId]);
+
+  function handleClaim(contractId: string) {
+    startTransition(async () => {
+      const result = await claimContract(clanId, contractId);
+      if ("error" in result) {
+        toast.error(result.error);
+        setBoard(await fetchContractBoard(clanId));
+      } else {
+        setBoard(result.board);
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {TIER_ORDER.map((tier) => {
+        const entries = board.filter((entry) => entry.contract.tier === tier);
+        if (entries.length === 0) return null;
+        return (
+          <div key={tier} className="flex flex-col gap-3">
+            <h2 className="text-sm font-bold text-foreground-tertiary">{TIER_TITLE[tier]}</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {entries.map((entry) => (
+                <ContractCard key={entry.contract.id} entry={entry} pending={pending} onClaim={handleClaim} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
