@@ -41,6 +41,9 @@ export function ContractsBoard({
         setBoard(await fetchContractBoard(clanId));
       } else {
         setBoard(result.board);
+        if (result.justCompleted) {
+          toast.success(`🎉 ${result.justCompleted.title} complete! +${result.justCompleted.points}pts`);
+        }
       }
     });
   }

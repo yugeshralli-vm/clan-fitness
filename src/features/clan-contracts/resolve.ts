@@ -7,8 +7,9 @@ import { getContract } from "./catalog";
 
 // Asia/Kolkata never observes DST (fixed +05:30 year-round), so a dayKey's local midnight can be
 // reconstructed directly from an explicit-offset ISO string — no need for the Intl-based
-// DST-safe machinery src/lib/timezone-date.ts uses for per-user timezones.
-function kolkataDayStart(dayKey: string): Date {
+// DST-safe machinery src/lib/timezone-date.ts uses for per-user timezones. Exported for reuse by
+// claimContract's instant-completion preview (see actions.ts), which needs the same day window.
+export function kolkataDayStart(dayKey: string): Date {
   return new Date(`${dayKey}T00:00:00+05:30`);
 }
 
