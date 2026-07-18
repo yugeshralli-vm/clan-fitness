@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { clanMessages } from "@/db/schema";
 import { getClanMembers, getClanMembership } from "@/features/clans/queries";
 import { notifyUser } from "@/features/notifications/send";
-import { extractMentionedUserIds, mentionsToPlainText } from "@/lib/mentions";
+import { extractMentionedUserIds, MENTION_EVERYONE_ID, mentionsToPlainText } from "@/lib/mentions";
 import { getClanMessages } from "./queries";
 import { CLAN_MESSAGE_MAX_LENGTH, CLAN_MESSAGE_MAX_RAW_LENGTH } from "./types";
 
@@ -65,8 +65,14 @@ export async function sendClanMessage(
   const members = await getClanMembers(clanId);
   const author = members.find((m) => m.user.id === access.userId);
   const memberIds = new Set(members.map((m) => m.user.id));
+  const rawMentionedIds = extractMentionedUserIds(body);
+  // @everyone broadcasts to the whole clan instead of naming individuals — its sentinel id isn't
+  // a real member, so it'd otherwise just get silently dropped by the membership filter below.
+  const mentionsEveryone = rawMentionedIds.includes(MENTION_EVERYONE_ID);
   const mentionedIds = new Set(
-    extractMentionedUserIds(body).filter((id) => memberIds.has(id) && id !== access.userId),
+    mentionsEveryone
+      ? [...memberIds].filter((id) => id !== access.userId)
+      : rawMentionedIds.filter((id) => memberIds.has(id) && id !== access.userId),
   );
   const url = `/clans/${clanId}/chat`;
 
@@ -77,7 +83,14 @@ export async function sendClanMessage(
     [...mentionedIds].map((userId) =>
       notifyUser(
         userId,
-        { type: "mention", title: `${author?.user.name ?? "Someone"} mentioned you in clan chat`, body: preview(displayText), url },
+        {
+          type: "mention",
+          title: mentionsEveryone
+            ? `${author?.user.name ?? "Someone"} mentioned everyone in clan chat`
+            : `${author?.user.name ?? "Someone"} mentioned you in clan chat`,
+          body: preview(displayText),
+          url,
+        },
         { skipEmail: true },
       ),
     ),

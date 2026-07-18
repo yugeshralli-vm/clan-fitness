@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { MentionInput, type MentionInputHandle, type MentionMember } from "@/components/shared/MentionInput";
 import { Button } from "@/components/ui/button";
+import { mentionsToPlainText } from "@/lib/mentions";
 import { fetchClanMessages, sendClanMessage } from "../actions";
 import type { ClanMessageRow } from "../queries";
 import { CLAN_MESSAGE_MAX_LENGTH } from "../types";
@@ -142,7 +143,7 @@ export function ClanChatThread({
           <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 border-b border-surface-border px-6 py-2">
             <div className="min-w-0 flex-1 border-l-2 border-accent pl-2">
               <p className="text-xs font-semibold text-accent">Replying to {replyingTo.authorName}</p>
-              <p className="truncate text-xs text-foreground-tertiary">{replyingTo.body}</p>
+              <p className="truncate text-xs text-foreground-tertiary">{mentionsToPlainText(replyingTo.body)}</p>
             </div>
             <button
               type="button"
@@ -161,6 +162,7 @@ export function ClanChatThread({
             onChange={setText}
             members={members}
             excludeUserId={currentUser.id}
+            allowEveryone
             maxLength={CLAN_MESSAGE_MAX_LENGTH}
             placeholder="Type a message... (@ to mention)"
           />
