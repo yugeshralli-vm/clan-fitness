@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { celebrate } from "@/components/ui/reward-snackbar";
 import { toast } from "@/components/ui/toast";
 import { claimContract, fetchContractBoard, getMyLiveClaimProgress } from "../actions";
 import type { ContractBoardEntry, ContractTier } from "../types";
@@ -39,7 +40,7 @@ export function ContractsBoard({
       for (const item of progress) {
         if (item.completed && !celebratedRef.current.has(item.contractId)) {
           celebratedRef.current.add(item.contractId);
-          toast.success(`🎉 ${item.title} complete! +${item.points}pts`);
+          celebrate.contractComplete(item.title, item.points);
         }
       }
     }, POLL_INTERVAL_MS);
@@ -57,7 +58,7 @@ export function ContractsBoard({
         if (result.justCompleted) {
           celebratedRef.current.add(contractId);
           setLiveCompletedIds((prev) => new Set(prev).add(contractId));
-          toast.success(`🎉 ${result.justCompleted.title} complete! +${result.justCompleted.points}pts`);
+          celebrate.contractComplete(result.justCompleted.title, result.justCompleted.points);
         }
       }
     });
