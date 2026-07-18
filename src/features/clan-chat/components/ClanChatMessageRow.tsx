@@ -11,7 +11,7 @@ import { toggleClanMessageReaction } from "@/features/reactions/actions";
 import { CHAT_REACTION_EMOJIS } from "@/features/reactions/types";
 import type { ReactionSummary } from "@/features/reactions/types";
 import { triggerHaptic } from "@/lib/haptics";
-import { parseCommentSegments } from "@/lib/mentions";
+import { mentionsToPlainText, parseCommentSegments } from "@/lib/mentions";
 import type { ClanMessageRow } from "../queries";
 
 const SWIPE_TRIGGER_PX = 56;
@@ -156,7 +156,7 @@ export function ClanChatMessageRow({
                 }`}
               >
                 <p className="truncate font-semibold">{message.replyToAuthorName ?? "Original message"}</p>
-                <p className="line-clamp-2 opacity-80">{message.replyToBody}</p>
+                <p className="line-clamp-2 opacity-80">{mentionsToPlainText(message.replyToBody ?? "")}</p>
               </div>
             )}
             <p className="whitespace-pre-wrap break-words">

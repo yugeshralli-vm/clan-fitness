@@ -1,10 +1,13 @@
 "use client";
 
+import { Users } from "lucide-react";
 import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { buildMentionMarkup, type ResolvedMention } from "@/lib/mentions";
+import { buildMentionMarkup, MENTION_EVERYONE_ID, type ResolvedMention } from "@/lib/mentions";
 import { Avatar } from "./Avatar";
 
 export type MentionMember = { id: string; name: string; avatarUrl: string | null };
+
+const EVERYONE_OPTION: MentionMember = { id: MENTION_EVERYONE_ID, name: "everyone", avatarUrl: null };
 
 export type MentionInputHandle = {
   /** Current text rewritten with `@[Name](id)` markup for any resolved mentions — read this at
@@ -52,12 +55,15 @@ export const MentionInput = forwardRef<
     onChange: (value: string) => void;
     members: MentionMember[];
     excludeUserId?: string | null;
+    /** Offers "@everyone" as a mentionable option, on top of the real members — only makes sense
+     * where a broadcast-to-everyone mention is meaningful (clan chat), so callers opt in. */
+    allowEveryone?: boolean;
     placeholder?: string;
     maxLength?: number;
     className?: string;
   }
 >(function MentionInput(
-  { value, onChange, members, excludeUserId, placeholder, maxLength, className },
+  { value, onChange, members, excludeUserId, allowEveryone, placeholder, maxLength, className },
   ref,
 ) {
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -82,10 +88,13 @@ export const MentionInput = forwardRef<
   const mentionMatches = useMemo(() => {
     if (mentionQuery === null) return [];
     const query = mentionQuery.toLowerCase();
-    return members
-      .filter((member) => member.id !== excludeUserId && member.name.toLowerCase().includes(query))
-      .slice(0, MAX_MENTION_SUGGESTIONS);
-  }, [mentionQuery, members, excludeUserId]);
+    const memberMatches = members.filter(
+      (member) => member.id !== excludeUserId && member.name.toLowerCase().includes(query),
+    );
+    const matches =
+      allowEveryone && EVERYONE_OPTION.name.includes(query) ? [EVERYONE_OPTION, ...memberMatches] : memberMatches;
+    return matches.slice(0, MAX_MENTION_SUGGESTIONS);
+  }, [mentionQuery, members, excludeUserId, allowEveryone]);
 
   function handleTextChange(event: React.ChangeEvent<HTMLInputElement>) {
     const next = event.target.value;
@@ -166,7 +175,13 @@ export const MentionInput = forwardRef<
                   i === highlightedIndex ? "bg-background text-foreground" : "text-foreground-secondary"
                 }`}
               >
-                <Avatar src={member.avatarUrl} name={member.name} size={20} />
+                {member.id === MENTION_EVERYONE_ID ? (
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+                    <Users size={12} />
+                  </span>
+                ) : (
+                  <Avatar src={member.avatarUrl} name={member.name} size={20} />
+                )}
                 {member.name}
               </button>
             </li>

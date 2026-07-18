@@ -5,6 +5,11 @@
  */
 const MENTION_PATTERN = /@\[([^\]]+)\]\(([^)]+)\)/g;
 
+/** Sentinel id for an `@everyone` mention — not a real user id, so it's naturally excluded
+ * wherever mentioned ids are checked against real membership; callers that want to broadcast to
+ * every member check for this id explicitly instead (see clan-chat's sendClanMessage). */
+export const MENTION_EVERYONE_ID = "everyone";
+
 export type CommentSegment = { type: "text"; value: string } | { type: "mention"; name: string; userId: string };
 
 export function extractMentionedUserIds(text: string): string[] {
