@@ -137,13 +137,13 @@ export const CONTRACT_CATALOG: ContractDefinition[] = [
   {
     id: "steps-10k",
     tier: 2,
-    points: 30,
+    points: 50,
     title: "10k steps",
     description: "Hit 10,000 steps today.",
     async evaluate({ userId, dayStart, dayEnd }) {
       const today = await getStepsInWindow(userId, dayStart, dayEnd);
       const completed = today >= 10_000;
-      return { completed, pointsAwarded: completed ? 30 : 0 };
+      return { completed, pointsAwarded: completed ? 50 : 0 };
     },
   },
   {
