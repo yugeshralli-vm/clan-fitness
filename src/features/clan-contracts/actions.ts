@@ -51,6 +51,24 @@ export type ClaimContractResult =
   | { board: ContractBoardEntry[]; justCompleted?: { title: string; points: number } }
   | { error: string };
 
+/** Live, read-only "would this be satisfied right now" check — never writes status/pointsAwarded.
+ * Final completion is only ever written by the next day's resolution cron (see resolve.ts),
+ * since check-ins are editable same-day and this could still flip before then. */
+async function checkLiveCompletion(
+  clanId: string,
+  userId: string,
+  contractId: string,
+  dayKey: string,
+  meta: Record<string, unknown> | null,
+) {
+  const contract = getContract(contractId);
+  if (!contract) return false;
+  const dayStart = kolkataDayStart(dayKey);
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  const { completed } = await contract.evaluate({ userId, clanId, dayStart, dayEnd, meta });
+  return completed;
+}
+
 export async function claimContract(clanId: string, contractId: string): Promise<ClaimContractResult> {
   const access = await resolveAccess(clanId);
   if (!access.allowed) return { error: "Not authorized." };
@@ -91,17 +109,50 @@ export async function claimContract(clanId: string, contractId: string): Promise
   revalidatePath(`/clans/${clanId}/contracts`);
 
   // A simpler contract (e.g. "log any check-in") can already be satisfied the instant it's
-  // claimed — checking that here is purely a celebratory preview for the client, not a
-  // finalization: points are only ever actually awarded by the next day's resolution cron (see
-  // resolve.ts), since check-ins are editable same-day and this evaluation could still flip
-  // before then. This never writes status/pointsAwarded itself.
+  // claimed — this is purely a celebratory preview for the client, see checkLiveCompletion.
   const board = await getContractBoard(clanId, dayKey);
-  const dayStart = kolkataDayStart(dayKey);
-  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-  const { completed } = await contract.evaluate({ userId: access.userId, clanId, dayStart, dayEnd, meta });
+  const completed = await checkLiveCompletion(clanId, access.userId, contractId, dayKey, meta);
   const justCompleted = completed ? { title: contract.title, points: contract.points } : undefined;
 
   return { board, justCompleted };
+}
+
+/** For the client to poll: re-checks every one of the caller's own still-"claimed" (unresolved)
+ * contracts today against the live data, so a contract satisfied *after* being claimed (e.g. you
+ * claim "comment on a check-in" and then go comment) can still surface a completion toast before
+ * the next day's cron formally resolves it — not just contracts already true at claim time. */
+export async function getMyLiveClaimProgress(
+  clanId: string,
+): Promise<{ contractId: string; title: string; points: number; completed: boolean }[]> {
+  const access = await resolveAccess(clanId);
+  if (!access.allowed) return [];
+
+  const dayKey = userDayKey(CLAN_TIMEZONE, new Date());
+  const myClaims = await db
+    .select()
+    .from(clanContractClaims)
+    .where(
+      and(
+        eq(clanContractClaims.clanId, clanId),
+        eq(clanContractClaims.userId, access.userId),
+        eq(clanContractClaims.dayKey, dayKey),
+        eq(clanContractClaims.status, "claimed"),
+      ),
+    );
+
+  return Promise.all(
+    myClaims.map(async (claim) => {
+      const contract = getContract(claim.contractId);
+      const completed = await checkLiveCompletion(
+        clanId,
+        access.userId,
+        claim.contractId,
+        dayKey,
+        claim.meta as Record<string, unknown> | null,
+      );
+      return { contractId: claim.contractId, title: contract?.title ?? claim.contractId, points: contract?.points ?? 0, completed };
+    }),
+  );
 }
 
 /** Called from the client to refresh the board (e.g. after a failed claim, or on a poll). */

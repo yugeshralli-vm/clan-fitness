@@ -1,6 +1,6 @@
 "use client";
 
-import { Star } from "lucide-react";
+import { Check, Star } from "lucide-react";
 import { useState } from "react";
 import { Avatar } from "@/components/shared/Avatar";
 import type { ContractBoardEntry, ContractTier } from "../types";
@@ -32,11 +32,13 @@ export function ContractCard({
   pending,
   onClaim,
   claimDisabled,
+  liveCompleted,
 }: {
   entry: ContractBoardEntry;
   pending: boolean;
   onClaim: (contractId: string) => void;
   claimDisabled: boolean;
+  liveCompleted: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
@@ -71,6 +73,7 @@ export function ContractCard({
         <div className="mt-1 flex min-w-0 items-center gap-1.5 rounded-md bg-background/60 px-2 py-1.5 text-xs text-foreground-tertiary">
           <Avatar src={claim.userAvatarUrl} name={claim.userName} size={16} />
           <span className="min-w-0 flex-1 truncate">Claimed by {claim.userName}</span>
+          {liveCompleted && <Check size={14} className="shrink-0 text-success" />}
         </div>
       ) : confirming ? (
         <div className="mt-1 flex items-center gap-1.5">

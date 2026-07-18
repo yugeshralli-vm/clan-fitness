@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "@/components/ui/toast";
-import { claimContract, fetchContractBoard } from "../actions";
+import { claimContract, fetchContractBoard, getMyLiveClaimProgress } from "../actions";
 import type { ContractBoardEntry, ContractTier } from "../types";
 import { ContractCard, TierStars } from "./ContractCard";
 
@@ -23,12 +23,25 @@ export function ContractsBoard({
 }) {
   const [board, setBoard] = useState(initialBoard);
   const [pending, startTransition] = useTransition();
+  const [liveCompletedIds, setLiveCompletedIds] = useState<Set<string>>(new Set());
   const myClaimsToday = board.filter((entry) => entry.claim?.userId === currentUserId).length;
   const atDailyCap = myClaimsToday >= maxClaimsPerMemberPerDay;
+  // Tracks which contracts have already gotten their celebration toast, across polls — a claim
+  // stays live-completed on every subsequent poll until the cron resolves it, so without this
+  // we'd re-toast the same completion every 5s.
+  const celebratedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const interval = setInterval(async () => {
-      setBoard(await fetchContractBoard(clanId));
+      const [freshBoard, progress] = await Promise.all([fetchContractBoard(clanId), getMyLiveClaimProgress(clanId)]);
+      setBoard(freshBoard);
+      setLiveCompletedIds(new Set(progress.filter((p) => p.completed).map((p) => p.contractId)));
+      for (const item of progress) {
+        if (item.completed && !celebratedRef.current.has(item.contractId)) {
+          celebratedRef.current.add(item.contractId);
+          toast.success(`🎉 ${item.title} complete! +${item.points}pts`);
+        }
+      }
     }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [clanId]);
@@ -42,6 +55,8 @@ export function ContractsBoard({
       } else {
         setBoard(result.board);
         if (result.justCompleted) {
+          celebratedRef.current.add(contractId);
+          setLiveCompletedIds((prev) => new Set(prev).add(contractId));
           toast.success(`🎉 ${result.justCompleted.title} complete! +${result.justCompleted.points}pts`);
         }
       }
@@ -67,6 +82,7 @@ export function ContractsBoard({
                   pending={pending}
                   onClaim={handleClaim}
                   claimDisabled={atDailyCap}
+                  liveCompleted={liveCompletedIds.has(entry.contract.id)}
                 />
               ))}
             </div>
