@@ -44,14 +44,17 @@ export function ProfileLevelSummary({
   // detected here on next visit instead: compare against the last level this browser saw and
   // celebrate only the first time it's higher — same "seen" pattern BottomNav already uses for
   // unread dots (see chatSeenKey/feedSeenKey), just keyed per-feature. Now also fires the instant
-  // pendingPoints pushes the live level past the last-seen one, not just after the cron runs.
+  // pendingPoints pushes the live level past the last-seen one, not just after the cron runs —
+  // which also means level can transiently dip back down within a session (e.g. the check-in
+  // behind a live-completed contract gets edited away), so "seen" must only ever move up, never
+  // regress to the dipped value, or climbing back past an already-celebrated level would re-fire it.
   useEffect(() => {
     const key = levelSeenKey(userId);
     const seen = Number(localStorage.getItem(key) ?? "0");
     if (level > seen) {
       celebrate.levelUp(level);
     }
-    localStorage.setItem(key, String(level));
+    localStorage.setItem(key, String(Math.max(level, seen)));
   }, [userId, level]);
 
   return (
