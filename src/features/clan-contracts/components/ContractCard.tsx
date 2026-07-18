@@ -42,9 +42,24 @@ export function ContractCard({
   return (
     <div className={`flex h-full min-w-0 flex-col gap-2 rounded-lg border p-3 ${TIER_CLASSES[contract.tier]}`}>
       <div className="flex items-start justify-between gap-1.5">
-        <div className="min-w-0">
-          <TierStars tier={contract.tier} />
-          <p className="truncate font-semibold text-foreground">{contract.title}</p>
+        <div className="flex min-w-0 items-start gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element -- static per-contract icon that
+              may not exist yet (rolled out asset-by-asset); onError hides it gracefully, which
+              next/image doesn't support as cleanly for an intentionally-optional local asset. */}
+          <img
+            src={`/contracts/${contract.id}.png`}
+            alt=""
+            width={40}
+            height={40}
+            className="h-10 w-10 shrink-0 rounded-md border border-surface-border/60 object-cover"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+          <div className="min-w-0">
+            <TierStars tier={contract.tier} />
+            <p className="truncate font-semibold text-foreground">{contract.title}</p>
+          </div>
         </div>
         <span className="shrink-0 rounded-full border border-surface-border bg-background px-1.5 py-0.5 text-[10px] font-bold text-foreground">
           {contract.points}pt
