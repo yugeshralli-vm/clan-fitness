@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
 import { TimezoneSync } from "@/components/shared/TimezoneSync";
+import { RewardSnackbar } from "@/components/ui/reward-snackbar";
 import { Toaster } from "@/components/ui/toast";
 import "./globals.css";
 
@@ -75,6 +76,7 @@ export default function RootLayout({
           <ServiceWorkerRegistration />
           <TimezoneSync />
           <Toaster />
+          <RewardSnackbar />
           <Analytics />
           <SpeedInsights />
         </body>

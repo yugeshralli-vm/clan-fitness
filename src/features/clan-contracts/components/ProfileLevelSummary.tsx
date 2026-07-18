@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { LevelBadge } from "@/components/shared/LevelBadge";
-import { toast } from "@/components/ui/toast";
+import { celebrate } from "@/components/ui/reward-snackbar";
 import type { LevelProgress } from "../level";
 
 function levelSeenKey(userId: string) {
@@ -20,7 +20,7 @@ export function ProfileLevelSummary({ userId, progress }: { userId: string; prog
     const key = levelSeenKey(userId);
     const seen = Number(localStorage.getItem(key) ?? "0");
     if (level > seen) {
-      toast.success(`Level up! You're now Level ${level}`);
+      celebrate.levelUp(level);
     }
     localStorage.setItem(key, String(level));
   }, [userId, level]);
