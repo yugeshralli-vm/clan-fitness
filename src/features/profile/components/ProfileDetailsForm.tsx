@@ -15,7 +15,7 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
 ];
 
 const SELECT_CLASS =
-  "rounded-lg border border-surface-border bg-surface px-3 py-2.5 text-base text-foreground sm:text-sm";
+  "w-full rounded-lg border border-surface-border bg-surface px-3 py-2.5 text-base text-foreground sm:text-sm";
 
 export function ProfileDetailsForm({
   heightDisplay,
@@ -105,7 +105,7 @@ export function ProfileDetailsForm({
           rows={3}
           defaultValue={bio}
           placeholder="A short intro for your clan"
-          className="rounded-lg border border-surface-border bg-surface px-3 py-2.5 text-base text-foreground placeholder:text-foreground-muted sm:text-sm"
+          className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2.5 text-base text-foreground placeholder:text-foreground-muted sm:text-sm"
         />
       </div>
 
