@@ -24,11 +24,11 @@ function truncateToDay(date: Date) {
 export async function generateWeeklyRecap(clanId: string, window: { start: Date; end: Date }) {
   const [members, config] = await Promise.all([getClanMembers(clanId), getAppConfig()]);
 
-  // Eligible = already a member by the end of the window being summarized — mirrors getClanFeed's
-  // own membership-visibility rule (day-truncated joinedAt), so someone who joined *this* week
-  // (before the cron fires) isn't scored on a week they weren't part of.
-  const weekEndDay = truncateToDay(window.end);
-  const eligibleMembers = members.filter((member) => truncateToDay(member.joinedAt) <= weekEndDay);
+  // Eligible = already a member by the *start* of the week being summarized (not just by its end)
+  // — someone who joined partway through only has a few days of data, so scoring them against
+  // members who had the full week isn't a fair comparison for either Top 3 or Wall of Shame.
+  const weekStartDay = truncateToDay(window.start);
+  const eligibleMembers = members.filter((member) => truncateToDay(member.joinedAt) <= weekStartDay);
   if (eligibleMembers.length < MIN_ELIGIBLE_MEMBERS) return null;
 
   const memberIds = eligibleMembers.map((member) => member.user.id);
