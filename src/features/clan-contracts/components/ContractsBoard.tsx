@@ -112,6 +112,10 @@ export function ContractsBoard({
         setBoard(await fetchContractBoard(clanId));
       } else {
         setBoard(result.board);
+        const opponentName = result.board.find((entry) => entry.contract.id === contractId)?.claim?.opponentName;
+        if (opponentName) {
+          celebrate.duelMatched(opponentName);
+        }
         if (result.justCompleted) {
           celebratedRef.current.add(result.justCompleted.claimId);
           saveCelebratedClaims(currentUserId, celebratedRef.current);

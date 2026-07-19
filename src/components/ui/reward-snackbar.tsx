@@ -1,10 +1,10 @@
 "use client";
 
-import { PartyPopper, Sparkles } from "lucide-react";
+import { PartyPopper, Sparkles, Swords } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
-type RewardVariant = "contract" | "level";
+type RewardVariant = "contract" | "level" | "duel";
 type RewardEntry = { id: string; variant: RewardVariant; eyebrow: string; title: string; badge?: string };
 
 const DURATION_MS = 4200;
@@ -36,6 +36,7 @@ export const celebrate = {
   contractComplete: (contractTitle: string, points: number) =>
     push("contract", "Contract complete", contractTitle, `+${points}`),
   levelUp: (level: number) => push("level", "Level up!", `Level ${level}`),
+  duelMatched: (opponentName: string) => push("duel", "Duel matched!", `You vs ${opponentName}`),
 };
 
 function subscribe(listener: () => void) {
@@ -78,7 +79,7 @@ function RewardItem({ entry }: { entry: RewardEntry }) {
     return () => clearTimeout(timeout);
   }, []);
 
-  const Icon = entry.variant === "level" ? Sparkles : PartyPopper;
+  const Icon = entry.variant === "level" ? Sparkles : entry.variant === "duel" ? Swords : PartyPopper;
 
   return (
     <div

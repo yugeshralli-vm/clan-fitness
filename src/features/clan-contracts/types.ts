@@ -34,5 +34,7 @@ export type ContractBoardEntry = {
     userName: string;
     userAvatarUrl: string | null;
     status: "claimed" | "completed" | "failed";
+    /** Set only for needsOpponent (duel) contracts — who the claimant was matched against. */
+    opponentName?: string;
   } | null;
 };
