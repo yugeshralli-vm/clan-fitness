@@ -84,7 +84,7 @@ function RewardItem({ entry }: { entry: RewardEntry }) {
   return (
     <div
       role="status"
-      className={`pointer-events-auto flex w-[calc(100vw-2rem)] max-w-sm items-center gap-3 rounded-2xl border border-accent/50 bg-surface px-4 py-3.5 shadow-[0_0_28px_-8px_var(--accent)] transition-all duration-300 ${
+      className={`pointer-events-auto flex w-[calc(100vw-2rem)] max-w-sm items-start gap-3 rounded-2xl border border-accent/50 bg-surface px-4 py-3.5 shadow-[0_0_28px_-8px_var(--accent)] transition-all duration-300 ${
         leaving ? "translate-y-2 scale-95 opacity-0" : "animate-[reward-in_0.4s_cubic-bezier(0.34,1.56,0.64,1)]"
       }`}
     >
@@ -93,7 +93,7 @@ function RewardItem({ entry }: { entry: RewardEntry }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[11px] font-bold tracking-wide text-accent uppercase">{entry.eyebrow}</p>
-        <p className="truncate text-base font-bold text-foreground">{entry.title}</p>
+        <p className="line-clamp-2 text-base font-bold text-foreground">{entry.title}</p>
       </div>
       {entry.badge && (
         <span className="shrink-0 rounded-full bg-accent px-2.5 py-1 text-sm font-bold text-accent-foreground">
