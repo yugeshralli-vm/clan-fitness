@@ -72,9 +72,9 @@ export function ContractCard({
       <p className="flex-1 text-xs text-foreground-secondary">{contract.description}</p>
 
       {claim ? (
-        <div className="mt-1 flex min-w-0 items-center gap-1.5 rounded-md bg-background/60 px-2 py-1.5 text-xs text-foreground-tertiary">
+        <div className="mt-1 flex min-w-0 items-start gap-1.5 rounded-md bg-background/60 px-2 py-1.5 text-xs text-foreground-tertiary">
           <Avatar src={claim.userAvatarUrl} name={claim.userName} size={16} />
-          <span className="min-w-0 flex-1 truncate">
+          <span className="line-clamp-2 min-w-0 flex-1">
             {claim.opponentName ? `${claim.userName} vs ${claim.opponentName}` : `Claimed by ${claim.userName}`}
           </span>
           {liveCompleted && <Check size={14} className="shrink-0 text-success" />}
