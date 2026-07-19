@@ -80,17 +80,17 @@ export function BottomNav({
             match: (p: string) => p === `/clans/${clanId}`,
             unreadDot: "feed" as const,
           },
-        ]
-      : []),
-    { href: "/logs", label: "Logs", icon: House, match: (p) => p === "/logs" },
-    ...(clanId
-      ? [
           {
             href: `/clans/${clanId}/manage`,
             label: "Clan",
             icon: Shield,
             match: (p: string) => p.startsWith(`/clans/${clanId}/manage`),
           },
+        ]
+      : []),
+    { href: "/logs", label: "Logs", icon: House, match: (p) => p === "/logs" },
+    ...(clanId
+      ? [
           {
             href: `/clans/${clanId}/chat`,
             label: "Chat",
