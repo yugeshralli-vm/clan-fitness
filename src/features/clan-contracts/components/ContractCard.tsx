@@ -42,7 +42,7 @@ export function ContractCard({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
-  const { contract, claim } = entry;
+  const { contract, claim, targetSteps } = entry;
 
   return (
     <div
@@ -70,6 +70,9 @@ export function ContractCard({
         </span>
       </div>
       <p className="flex-1 text-xs text-foreground-secondary">{contract.description}</p>
+      {targetSteps !== undefined && (
+        <p className="text-xs font-semibold text-foreground">Your target: {targetSteps.toLocaleString()} steps</p>
+      )}
 
       {claim ? (
         <div className="mt-1 flex min-w-0 items-start gap-1.5 rounded-md bg-background/60 px-2 py-1.5 text-xs text-foreground-tertiary">

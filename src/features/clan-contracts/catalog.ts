@@ -122,6 +122,10 @@ export const CONTRACT_CATALOG: ContractDefinition[] = [
       const completed = average > 0 && today > average;
       return { completed, pointsAwarded: completed ? 40 : 0 };
     },
+    async getTarget({ userId, dayStart }) {
+      const average = await getStepsAverageBefore(userId, dayStart);
+      return average > 0 ? Math.floor(average) + 1 : null;
+    },
   },
   {
     id: "perfect-day",
@@ -222,6 +226,10 @@ export const CONTRACT_CATALOG: ContractDefinition[] = [
       const completed = best > 0 && today > best;
       return { completed, pointsAwarded: completed ? 150 : 0 };
     },
+    async getTarget({ userId, dayStart }) {
+      const best = await getAllTimeBestStepsBefore(userId, dayStart);
+      return best > 0 ? best + 1 : null;
+    },
   },
   {
     id: "double-avg-steps",
@@ -233,6 +241,10 @@ export const CONTRACT_CATALOG: ContractDefinition[] = [
       const [today, average] = await Promise.all([getStepsInWindow(userId, dayStart, dayEnd), getStepsAverageBefore(userId, dayStart)]);
       const completed = average > 0 && today >= average * 2;
       return { completed, pointsAwarded: completed ? 120 : 0 };
+    },
+    async getTarget({ userId, dayStart }) {
+      const average = await getStepsAverageBefore(userId, dayStart);
+      return average > 0 ? Math.ceil(average * 2) : null;
     },
   },
   {
@@ -247,6 +259,10 @@ export const CONTRACT_CATALOG: ContractDefinition[] = [
       const [today, average] = await Promise.all([getStepsInWindow(userId, dayStart, dayEnd), getStepsAverageBefore(userId, dayStart)]);
       const completed = average > 0 && today >= average * 2;
       return { completed, pointsAwarded: completed ? 150 : -stake };
+    },
+    async getTarget({ userId, dayStart }) {
+      const average = await getStepsAverageBefore(userId, dayStart);
+      return average > 0 ? Math.ceil(average * 2) : null;
     },
   },
   {
@@ -281,6 +297,10 @@ export const CONTRACT_CATALOG: ContractDefinition[] = [
       ]);
       const completed = perfectDay && average > 0 && today > average;
       return { completed, pointsAwarded: completed ? 150 : 0 };
+    },
+    async getTarget({ userId, dayStart }) {
+      const average = await getStepsAverageBefore(userId, dayStart);
+      return average > 0 ? Math.floor(average) + 1 : null;
     },
   },
   {

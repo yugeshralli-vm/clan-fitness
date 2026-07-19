@@ -18,7 +18,7 @@ export default async function ClanContractsPage({ params }: { params: Promise<{ 
   if (!clan || !isMember) notFound();
 
   const dayKey = userDayKey("Asia/Kolkata", new Date());
-  const [board, config] = await Promise.all([getContractBoard(clanId, dayKey), getAppConfig()]);
+  const [board, config] = await Promise.all([getContractBoard(clanId, dayKey, user.id), getAppConfig()]);
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-8">

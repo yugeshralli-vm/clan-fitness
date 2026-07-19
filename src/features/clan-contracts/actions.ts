@@ -110,7 +110,7 @@ export async function claimContract(clanId: string, contractId: string): Promise
 
   // A simpler contract (e.g. "log any check-in") can already be satisfied the instant it's
   // claimed — this is purely a celebratory preview for the client, see checkLiveCompletion.
-  const board = await getContractBoard(clanId, dayKey);
+  const board = await getContractBoard(clanId, dayKey, access.userId);
   const completed = await checkLiveCompletion(clanId, access.userId, contractId, dayKey, meta);
   const justCompleted = completed ? { claimId: inserted[0].id, title: contract.title, points: contract.points } : undefined;
 
@@ -199,5 +199,5 @@ export async function getMyLivePendingPoints(): Promise<number> {
 export async function fetchContractBoard(clanId: string): Promise<ContractBoardEntry[]> {
   const access = await resolveAccess(clanId);
   if (!access.allowed) return [];
-  return getContractBoard(clanId, userDayKey(CLAN_TIMEZONE, new Date()));
+  return getContractBoard(clanId, userDayKey(CLAN_TIMEZONE, new Date()), access.userId);
 }
