@@ -25,6 +25,13 @@ export type ContractDefinition = {
   needsOpponent?: boolean;
   /** True for the wager contract — the claim's meta.stake is deducted on failure, multiplied on success. */
   isWager?: boolean;
+  /** For contracts whose completion threshold depends on the viewer's own historical data (e.g.
+   * "beat your average") — computes today's concrete numeric target so the board can show it
+   * instead of leaving the member to guess from a relative description. Evaluated per-viewer
+   * (whoever is looking at the board), not per-claimant, since the target must be known before
+   * anyone claims it. Undefined for contracts with a fixed/absolute threshold already spelled out
+   * in their description (e.g. "10k steps"). */
+  getTarget?: (ctx: { userId: string; dayStart: Date }) => Promise<number | null>;
 };
 
 export type ContractBoardEntry = {
@@ -37,4 +44,7 @@ export type ContractBoardEntry = {
     /** Set only for needsOpponent (duel) contracts — who the claimant was matched against. */
     opponentName?: string;
   } | null;
+  /** The viewer's own concrete step target for this contract today, if it has one — see
+   * ContractDefinition.getTarget. */
+  targetSteps?: number;
 };
