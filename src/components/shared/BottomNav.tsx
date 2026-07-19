@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, House, MessageSquare, Shield, User } from "lucide-react";
+import { Activity, MessageSquare, Plus, Shield, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, use, useEffect, useState, type ComponentType } from "react";
@@ -13,9 +13,12 @@ export type FeedCheckInEntry = { clanId: string; latestCheckInAt: Date | null };
 type NavItem = {
   href: string;
   label: string;
-  icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+  icon: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
   match: (pathname: string) => boolean;
   unreadDot?: "feed" | "chat";
+  // Renders as a raised accent-filled circular button (the center "Log" CTA) instead of a plain
+  // icon+label, regardless of whether it's the active route.
+  emphasize?: boolean;
 };
 
 function feedSeenKey(clanId: string) {
@@ -80,17 +83,17 @@ export function BottomNav({
             match: (p: string) => p === `/clans/${clanId}`,
             unreadDot: "feed" as const,
           },
-        ]
-      : []),
-    { href: "/logs", label: "Logs", icon: House, match: (p) => p === "/logs" },
-    ...(clanId
-      ? [
           {
             href: `/clans/${clanId}/manage`,
             label: "Clan",
             icon: Shield,
             match: (p: string) => p.startsWith(`/clans/${clanId}/manage`),
           },
+        ]
+      : []),
+    { href: "/logs", label: "Log", icon: Plus, match: (p) => p === "/logs", emphasize: true },
+    ...(clanId
+      ? [
           {
             href: `/clans/${clanId}/chat`,
             label: "Chat",
@@ -114,11 +117,18 @@ export function BottomNav({
             href={item.href}
             onClick={() => triggerHaptic()}
             className={`flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-semibold ${
-              active ? "text-accent" : "text-foreground-tertiary"
+              item.emphasize ? "text-foreground" : active ? "text-accent" : "text-foreground-tertiary"
             }`}
           >
             <span className="relative">
-              <Icon size={22} strokeWidth={active ? 2.25 : 1.75} />
+              {item.emphasize ? (
+                <span className="-mt-6 flex size-14 flex-col items-center justify-center gap-0.5 rounded-full bg-accent">
+                  <Icon size={20} strokeWidth={2.5} className="text-accent-foreground" />
+                  <span className="text-[10px] font-bold text-accent-foreground">{item.label}</span>
+                </span>
+              ) : (
+                <Icon size={22} strokeWidth={active ? 2.25 : 1.75} />
+              )}
               {item.unreadDot === "feed" && clanId && (
                 <Suspense fallback={null}>
                   <FeedUnreadDot promise={latestFeedCheckInAtByClan} clanId={clanId} seenAt={seenAt} />
@@ -130,7 +140,7 @@ export function BottomNav({
                 </Suspense>
               )}
             </span>
-            {item.label}
+            {!item.emphasize && item.label}
           </Link>
         );
       })}
