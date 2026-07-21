@@ -80,10 +80,19 @@ export async function wasFirstToCheckInInClan(userId: string, clanId: string, st
   const memberIds = members.map((m) => m.user.id);
   if (memberIds.length === 0) return false;
 
+  // "thought" is an optional journal-style entry, not a real activity log (see hasCheckInInWindow's
+  // callers) — excluded here too, so logging only a thought can't win the "first one in" race.
   const [first] = await db
     .select({ userId: checkIns.userId, createdAt: checkIns.createdAt })
     .from(checkIns)
-    .where(and(inArray(checkIns.userId, memberIds), gte(checkIns.createdAt, start), lt(checkIns.createdAt, end)))
+    .where(
+      and(
+        inArray(checkIns.userId, memberIds),
+        inArray(checkIns.type, ["gym", "steps", "food"]),
+        gte(checkIns.createdAt, start),
+        lt(checkIns.createdAt, end),
+      ),
+    )
     .orderBy(asc(checkIns.createdAt))
     .limit(1);
 
