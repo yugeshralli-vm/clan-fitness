@@ -8,21 +8,19 @@ import { mentionsToPlainText } from "@/lib/mentions";
 import { fetchClanMessages, sendClanMessage } from "../actions";
 import type { ClanMessageRow } from "../queries";
 import { CLAN_MESSAGE_MAX_LENGTH } from "../types";
+import { useClanChatRealtime } from "../useClanChatRealtime";
 import { ClanChatMessageRow } from "./ClanChatMessageRow";
 
 type ReplyingTo = { id: string; authorName: string; body: string };
-
-const POLL_INTERVAL_MS = 2000;
 
 function chatSeenKey(clanId: string) {
   return `clan-chat-seen:${clanId}`;
 }
 
 /**
- * "Near-zero latency" without any new realtime infrastructure: the sender's own message appears
- * immediately (optimistic, before the server confirms) and a 2s poll picks up every other
- * member's messages — more than fast enough for a clan-sized group, at zero added infra cost. The
- * poll interval is always cleared on unmount with no conditional path that could skip it.
+ * The sender's own message appears immediately (optimistic, before the server confirms); every
+ * other member's messages arrive via useClanChatRealtime — a push from the Railway signal server
+ * when it's configured, polling otherwise.
  */
 export function ClanChatThread({
   clanId,
@@ -43,13 +41,9 @@ export function ClanChatThread({
   const bottomRef = useRef<HTMLDivElement>(null);
   const mentionInputRef = useRef<MentionInputHandle>(null);
 
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      const fresh = await fetchClanMessages(clanId);
-      setMessages(fresh);
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [clanId]);
+  useClanChatRealtime(clanId, async () => {
+    setMessages(await fetchClanMessages(clanId));
+  });
 
   // The list itself never overflows internally — this page scrolls at the window level (see
   // ClanChatPage's plain flex layout, no fixed-height ancestor), so scrolling has to move the
