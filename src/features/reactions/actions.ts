@@ -8,6 +8,7 @@ import { checkIns, reactions } from "@/db/schema";
 import { getClanMembership } from "@/features/clans/queries";
 import { notifyUser } from "@/features/notifications/send";
 import { getOrSyncCurrentUser } from "@/lib/current-user";
+import { publishClanChange } from "@/lib/realtime";
 import { getReactionsForCheckIns, getReactionsForClanMessages, getReactionsForSystemPosts } from "./queries";
 import type { ReactionSummary } from "./types";
 
@@ -131,6 +132,7 @@ export async function toggleClanMessageReaction(
   }
 
   revalidatePath(`/clans/${clanId}/chat`);
+  await publishClanChange(clanId);
 
   const summaries = await getReactionsForClanMessages([clanMessageId], clanId, user.id);
   return { summary: summaries[clanMessageId] ?? {} };
