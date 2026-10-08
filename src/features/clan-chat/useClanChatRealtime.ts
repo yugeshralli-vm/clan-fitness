@@ -4,17 +4,16 @@ import { useEffect, useRef } from "react";
 import { getClanChatRealtimeToken } from "./actions";
 
 const REALTIME_URL = process.env.NEXT_PUBLIC_REALTIME_URL;
-/** Without the realtime server configured (local dev, previews) this is the only update path. */
-const POLL_ONLY_INTERVAL_MS = 2000;
-/** Safety net while the socket is down/reconnecting — slower, since it's not the main path. */
-const FALLBACK_POLL_INTERVAL_MS = 15_000;
+/** The original chat poll rate — used whenever the socket isn't open, or realtime isn't configured
+ * at all (local dev, previews), so chat is never slower than it was before the Railway server. */
+const POLL_INTERVAL_MS = 2000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
 
 /**
  * Calls `onChange` whenever another member changes this clan's chat. Connects to the Railway
  * signal server (realtime/server.mjs), which only says "something changed" — the actual messages
- * still come from the normal server action. Falls back to polling whenever the socket isn't open,
- * so a Railway outage degrades to slower updates instead of a dead chat.
+ * still come from the normal server action. Falls back to the old 2s poll whenever the socket
+ * isn't open, so a Railway outage just means chat behaves the way it used to.
  */
 export function useClanChatRealtime(clanId: string, onChange: () => void) {
   const onChangeRef = useRef(onChange);
@@ -26,7 +25,7 @@ export function useClanChatRealtime(clanId: string, onChange: () => void) {
     const refresh = () => onChangeRef.current();
 
     if (!REALTIME_URL) {
-      const interval = setInterval(refresh, POLL_ONLY_INTERVAL_MS);
+      const interval = setInterval(refresh, POLL_INTERVAL_MS);
       return () => clearInterval(interval);
     }
 
@@ -38,7 +37,7 @@ export function useClanChatRealtime(clanId: string, onChange: () => void) {
     // Always running; skips its tick while the socket is healthy.
     const fallbackPoll = setInterval(() => {
       if (socket?.readyState !== WebSocket.OPEN) refresh();
-    }, FALLBACK_POLL_INTERVAL_MS);
+    }, POLL_INTERVAL_MS);
 
     function scheduleReconnect() {
       if (disposed) return;
