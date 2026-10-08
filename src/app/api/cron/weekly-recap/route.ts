@@ -3,6 +3,7 @@ import { getClanMembersForClanIds } from "@/features/clans";
 import { startOfWeek } from "@/features/check-ins";
 import { notifyUser } from "@/features/notifications/send";
 import { generateWeeklyRecap } from "@/features/system-posts";
+import { publishClanEvent } from "@/lib/realtime";
 
 export const maxDuration = 60;
 
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
     clans.map(async (clan) => {
       const post = await generateWeeklyRecap(clan.id, { start, end });
       if (!post) return { clanId: clan.id, clanName: clan.name, posted: false };
+      await publishClanEvent(clan.id, "feed_post");
 
       const members = await getClanMembersForClanIds([clan.id]);
       const recipientIds = [...new Set(members.map((member) => member.user.id))];

@@ -1,13 +1,15 @@
-// Clan chat "something changed" signal server, deployed to Railway.
+// "Something changed" signal server for Clan Fitness, deployed to Railway.
 //
-// Deliberately dumb: it never touches the database or Clerk and never carries message content.
-// The Next.js app stays the only thing that reads/writes chat (auth, validation, notifications);
-// this just tells connected clients "clan X changed, refetch" so they can stop polling every 2s.
+// Deliberately dumb: it never touches the database or Clerk and never carries content. The
+// Next.js app stays the only thing that reads/writes data (auth, validation, notifications); this
+// just tells connected clients "X changed in clan Y" / "you have a new notification" so they
+// refetch instead of polling.
 //
 // - Browsers connect over WebSocket with a short-lived token the Next.js app signed (HMAC with
-//   REALTIME_SECRET) that says which user/clan it's for — see src/lib/realtime.ts.
-// - The Next.js app POSTs /publish with the same secret after a write; every socket in that
-//   clan's room gets a "changed" frame.
+//   REALTIME_SECRET) listing the user and their clans — see src/lib/realtime.ts. Each socket joins
+//   a `user:<id>` room plus one `clan:<id>` room per clan.
+// - The Next.js app POSTs /publish with the same secret after a write; every socket in the target
+//   room gets a `changed` frame with the event name (and who caused it, so UIs can ignore their own).
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
@@ -16,14 +18,14 @@ import { WebSocketServer } from "ws";
 const PORT = Number(process.env.PORT ?? 8080);
 const SECRET = process.env.REALTIME_SECRET;
 const HEARTBEAT_MS = 30_000;
-const MAX_PUBLISH_BODY_BYTES = 1024;
+const MAX_PUBLISH_BODY_BYTES = 64 * 1024;
 
 if (!SECRET) {
   console.error("REALTIME_SECRET is not set");
   process.exit(1);
 }
 
-/** clanId -> sockets currently in that clan's chat */
+/** room ("clan:<id>" / "user:<id>") -> sockets in it */
 const rooms = new Map();
 
 function safeEqual(a, b) {
@@ -41,7 +43,10 @@ function verifyToken(token) {
   if (!safeEqual(signature, expected)) return null;
   try {
     const payload = JSON.parse(Buffer.from(payloadPart, "base64url").toString("utf8"));
-    if (typeof payload.c !== "string" || typeof payload.u !== "string") return null;
+    if (typeof payload.u !== "string") return null;
+    // Older tokens (before the per-user room) carried a single clan id as a string.
+    if (typeof payload.c === "string") payload.c = [payload.c];
+    if (!Array.isArray(payload.c) || !payload.c.every((id) => typeof id === "string")) return null;
     if (typeof payload.exp !== "number" || payload.exp < Date.now() / 1000) return null;
     return payload;
   } catch {
@@ -49,27 +54,41 @@ function verifyToken(token) {
   }
 }
 
-function joinRoom(clanId, socket) {
-  let room = rooms.get(clanId);
-  if (!room) rooms.set(clanId, (room = new Set()));
+function joinRoom(name, socket) {
+  let room = rooms.get(name);
+  if (!room) rooms.set(name, (room = new Set()));
   room.add(socket);
 }
 
-function leaveRoom(clanId, socket) {
-  const room = rooms.get(clanId);
-  if (!room) return;
-  room.delete(socket);
-  if (room.size === 0) rooms.delete(clanId);
+function leaveRooms(socket) {
+  for (const name of socket.rooms ?? []) {
+    const room = rooms.get(name);
+    if (!room) continue;
+    room.delete(socket);
+    if (room.size === 0) rooms.delete(name);
+  }
 }
 
-function broadcast(clanId) {
-  const room = rooms.get(clanId);
+/** `room` is "clan:<id>" or "user:<id>"; the frame echoes the clan id (if any) so a client in
+ * several clans' rooms can tell which one changed. */
+function broadcast({ room: name, event, actor }) {
+  const room = rooms.get(name);
   if (!room) return 0;
-  const frame = JSON.stringify({ type: "changed", clanId });
+  const clanId = name.startsWith("clan:") ? name.slice("clan:".length) : undefined;
+  const frame = JSON.stringify({ type: "changed", event, clanId, actor });
   for (const socket of room) {
     if (socket.readyState === socket.OPEN) socket.send(frame);
   }
   return room.size;
+}
+
+/** Accepts one event or a batch; the original `{ clanId }` shape still means a chat change, so an
+ * app deploy that predates per-event publishing keeps working against this server. */
+function parsePublishBody(body) {
+  const parsed = JSON.parse(body);
+  if (typeof parsed.clanId === "string") return [{ room: `clan:${parsed.clanId}`, event: "chat_message" }];
+  const events = Array.isArray(parsed.events) ? parsed.events : [parsed];
+  return events.every((e) => typeof e.room === "string" && typeof e.event === "string") ? events : null;
 }
 
 function sendJson(res, status, body) {
@@ -93,9 +112,9 @@ const server = createServer((req, res) => {
     });
     req.on("end", () => {
       try {
-        const { clanId } = JSON.parse(body);
-        if (typeof clanId !== "string") return sendJson(res, 400, { error: "clanId required" });
-        sendJson(res, 200, { delivered: broadcast(clanId) });
+        const events = parsePublishBody(body);
+        if (!events) return sendJson(res, 400, { error: "room and event required" });
+        sendJson(res, 200, { delivered: events.reduce((sum, e) => sum + broadcast(e), 0) });
       } catch {
         sendJson(res, 400, { error: "invalid json" });
       }
@@ -117,15 +136,15 @@ server.on("upgrade", (req, socket, head) => {
     return;
   }
   wss.handleUpgrade(req, socket, head, (ws) => {
-    ws.clanId = payload.c;
+    ws.rooms = [`user:${payload.u}`, ...payload.c.map((clanId) => `clan:${clanId}`)];
     ws.isAlive = true;
-    joinRoom(payload.c, ws);
+    for (const name of ws.rooms) joinRoom(name, ws);
     ws.on("pong", () => {
       ws.isAlive = true;
     });
     // Clients never need to send anything; ignore whatever arrives.
-    ws.on("close", () => leaveRoom(ws.clanId, ws));
-    ws.on("error", () => leaveRoom(ws.clanId, ws));
+    ws.on("close", () => leaveRooms(ws));
+    ws.on("error", () => leaveRooms(ws));
   });
 });
 

@@ -1,9 +1,10 @@
 import "server-only";
 
 import { createHmac } from "node:crypto";
+import type { RealtimeEvent } from "./realtime-events";
 
-// Talks to the clan chat signal server on Railway (realtime/server.mjs). Both functions are
-// no-ops when the env vars aren't set, so local dev and previews fall back to plain polling.
+// Talks to the signal server on Railway (realtime/server.mjs). Everything here is a no-op when the
+// env vars aren't set, so local dev and previews fall back to plain polling.
 
 const TOKEN_TTL_SECONDS = 10 * 60;
 const PUBLISH_TIMEOUT_MS = 1500;
@@ -14,31 +15,45 @@ function config() {
   return url && secret ? { url, secret } : null;
 }
 
-/** Short-lived token that lets this user's browser join one clan's room. Only checked at connect
- * time, so the TTL just bounds how long a leaked URL stays usable — reconnects fetch a fresh one. */
-export function signRealtimeToken(userId: string, clanId: string): string | null {
+/** Short-lived token that lets this user's browser join their own room plus one room per clan.
+ * Only checked at connect time, so the TTL just bounds how long a leaked URL stays usable —
+ * reconnects fetch a fresh one (which also picks up clans joined since). */
+export function signRealtimeToken(userId: string, clanIds: string[]): string | null {
   const cfg = config();
   if (!cfg) return null;
   const payload = Buffer.from(
-    JSON.stringify({ u: userId, c: clanId, exp: Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS }),
+    JSON.stringify({ u: userId, c: clanIds, exp: Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS }),
   ).toString("base64url");
   const signature = createHmac("sha256", cfg.secret).update(payload).digest("base64url");
   return `${payload}.${signature}`;
 }
 
-/** Tells every open chat in this clan to refetch. Best-effort: a failure here must never fail the
- * write that triggered it — clients still pick the change up on their fallback poll. */
-export async function publishClanChange(clanId: string): Promise<void> {
+type PublishedEvent = { room: string; event: RealtimeEvent; actor?: string };
+
+/** Best-effort: a failure here must never fail the write that triggered it — clients still pick
+ * the change up on their fallback poll or next visit. */
+async function publish(events: PublishedEvent[]): Promise<void> {
   const cfg = config();
-  if (!cfg) return;
+  if (!cfg || events.length === 0) return;
   try {
     await fetch(new URL("/publish", cfg.url), {
       method: "POST",
       headers: { authorization: `Bearer ${cfg.secret}`, "content-type": "application/json" },
-      body: JSON.stringify({ clanId }),
+      body: JSON.stringify({ events }),
       signal: AbortSignal.timeout(PUBLISH_TIMEOUT_MS),
     });
   } catch (error) {
     console.error("realtime publish failed", error);
   }
+}
+
+/** Tells everyone with any of these clans open that something changed. `actor` is the user who
+ * caused it, so their own UI can skip things like unread dots. */
+export function publishClanEvent(clanIds: string | string[], event: RealtimeEvent, actor?: string) {
+  const ids = Array.isArray(clanIds) ? clanIds : [clanIds];
+  return publish(ids.map((clanId) => ({ room: `clan:${clanId}`, event, actor })));
+}
+
+export function publishUserEvent(userId: string, event: RealtimeEvent) {
+  return publish([{ room: `user:${userId}`, event }]);
 }

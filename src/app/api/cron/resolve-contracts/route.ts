@@ -1,5 +1,6 @@
 import { getAllClansForAdmin } from "@/features/admin";
 import { resolveContractsForClan } from "@/features/clan-contracts/resolve";
+import { publishClanEvent } from "@/lib/realtime";
 import { userDayKey } from "@/lib/timezone-date";
 
 export const maxDuration = 60;
@@ -23,6 +24,9 @@ export async function GET(request: Request) {
   // Promise.allSettled, not Promise.all — Vercel Cron doesn't retry a failed invocation, so one
   // clan's transient error shouldn't stop the rest from resolving.
   const results = await Promise.allSettled(clans.map((clan) => resolveContractsForClan(clan.id, dayKey)));
+
+  // Points just moved from "pending" into totalPoints — open boards/level bars should refetch.
+  await publishClanEvent(clans.map((clan) => clan.id), "contracts");
 
   const summary = results.map((result, i) =>
     result.status === "fulfilled" ? result.value : { clanId: clans[i].id, dayKey, error: String(result.reason) },

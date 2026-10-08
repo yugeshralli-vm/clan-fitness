@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Suspense, use, useEffect, useState, useTransition, type ComponentType } from "react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { toast } from "@/components/ui/toast";
-import { getNotificationsAndMarkRead } from "../actions";
+import { useRealtime } from "@/features/realtime";
+import { fetchUnreadNotificationCount, getNotificationsAndMarkRead } from "../actions";
 import { formatRelativeTime } from "../format";
 import type { NotificationRow } from "../queries";
 import type { NotificationType } from "../types";
@@ -31,9 +32,25 @@ export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: P
   // settles (inside the Suspense-isolated leaf below), so "cleared" is the one thing this
   // component can control synchronously on open — the leaf combines both to decide what to show.
   const [cleared, setCleared] = useState(false);
+  // Fresher than the layout's initial count once a realtime "notifications" event has arrived.
+  const [liveCount, setLiveCount] = useState<number | null>(null);
   const [items, setItems] = useState<NotificationRow[] | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+
+  // No fallback poll — without the socket the badge just updates on the next navigation, as before.
+  useRealtime({
+    events: ["notifications"],
+    onChange: async () => {
+      if (open) {
+        // The sheet is showing the list — refresh it in place (which also keeps it all read).
+        setItems(await getNotificationsAndMarkRead());
+        return;
+      }
+      setLiveCount(await fetchUnreadNotificationCount());
+      setCleared(false);
+    },
+  });
 
   function handleOpen() {
     setOpen(true);
@@ -65,7 +82,7 @@ export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: P
       >
         <Bell size={22} strokeWidth={1.75} />
         <Suspense fallback={null}>
-          <UnreadBadge countPromise={initialUnreadCount} cleared={cleared} />
+          <UnreadBadge countPromise={initialUnreadCount} liveCount={liveCount} cleared={cleared} />
         </Suspense>
       </button>
 
@@ -108,9 +125,17 @@ export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: P
 }
 
 /** Isolated so only this leaf ever suspends — the bell icon and button render immediately regardless. */
-function UnreadBadge({ countPromise, cleared }: { countPromise: Promise<number>; cleared: boolean }) {
-  const count = use(countPromise);
-  const display = cleared ? 0 : count;
+function UnreadBadge({
+  countPromise,
+  liveCount,
+  cleared,
+}: {
+  countPromise: Promise<number>;
+  liveCount: number | null;
+  cleared: boolean;
+}) {
+  const initialCount = use(countPromise);
+  const display = cleared ? 0 : (liveCount ?? initialCount);
 
   // Syncs the PWA home-screen app icon badge to whatever's shown here — covers the app being
   // opened directly (a push's own badge write, in sw.js, only fires while the app is closed) and

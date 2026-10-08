@@ -4,14 +4,17 @@ import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { MentionInput, type MentionInputHandle, type MentionMember } from "@/components/shared/MentionInput";
 import { Button } from "@/components/ui/button";
+import { useRealtime } from "@/features/realtime";
 import { mentionsToPlainText } from "@/lib/mentions";
 import { fetchClanMessages, sendClanMessage } from "../actions";
 import type { ClanMessageRow } from "../queries";
 import { CLAN_MESSAGE_MAX_LENGTH } from "../types";
-import { useClanChatRealtime } from "../useClanChatRealtime";
 import { ClanChatMessageRow } from "./ClanChatMessageRow";
 
 type ReplyingTo = { id: string; authorName: string; body: string };
+
+/** The original chat poll rate — only used while the realtime socket isn't open. */
+const FALLBACK_POLL_INTERVAL_MS = 2000;
 
 function chatSeenKey(clanId: string) {
   return `clan-chat-seen:${clanId}`;
@@ -19,8 +22,8 @@ function chatSeenKey(clanId: string) {
 
 /**
  * The sender's own message appears immediately (optimistic, before the server confirms); every
- * other member's messages arrive via useClanChatRealtime — a push from the Railway signal server
- * when it's configured, polling otherwise.
+ * other member's messages arrive via useRealtime — a push from the Railway signal server, or a 2s
+ * poll while that isn't available.
  */
 export function ClanChatThread({
   clanId,
@@ -41,8 +44,11 @@ export function ClanChatThread({
   const bottomRef = useRef<HTMLDivElement>(null);
   const mentionInputRef = useRef<MentionInputHandle>(null);
 
-  useClanChatRealtime(clanId, async () => {
-    setMessages(await fetchClanMessages(clanId));
+  useRealtime({
+    events: ["chat_message", "chat_reaction"],
+    clanId,
+    fallbackPollMs: FALLBACK_POLL_INTERVAL_MS,
+    onChange: async () => setMessages(await fetchClanMessages(clanId)),
   });
 
   // The list itself never overflows internally — this page scrolls at the window level (see

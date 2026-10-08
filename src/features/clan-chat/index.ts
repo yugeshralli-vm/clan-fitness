@@ -1,4 +1,4 @@
-export { fetchClanMessages, getClanChatRealtimeToken, sendClanMessage } from "./actions";
+export { fetchClanMessages, sendClanMessage } from "./actions";
 export type { ClanChatActionState } from "./actions";
 export { getClanMessages, getLatestClanMessageAt } from "./queries";
 export type { ClanMessageRow } from "./queries";

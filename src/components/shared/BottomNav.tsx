@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, use, useEffect, useState, type ComponentType } from "react";
 import type { ClanChatEntry } from "@/features/clan-chat";
+import { useRealtime } from "@/features/realtime";
 import { useActiveClanId, type ClanOption } from "@/lib/active-clan";
 import { triggerHaptic } from "@/lib/haptics";
 
@@ -32,10 +33,12 @@ function chatSeenKey(clanId: string) {
 }
 
 export function BottomNav({
+  currentUserId,
   clans,
   latestFeedCheckInAtByClan,
   latestClanMessageAtByClan,
 }: {
+  currentUserId: string;
   clans: ClanOption[];
   latestFeedCheckInAtByClan: Promise<FeedCheckInEntry[]>;
   latestClanMessageAtByClan: Promise<ClanChatEntry[]>;
@@ -44,6 +47,29 @@ export function BottomNav({
   const [seenAt, setSeenAt] = useState<Date | null>(null);
   const [chatSeenAt, setChatSeenAt] = useState<Date | null>(null);
   const clanId = useActiveClanId(pathname, clans);
+  // Activity pushed by the realtime server since the layout's timestamps were fetched — tagged
+  // with its clan so switching clans doesn't carry another clan's dot over.
+  const [liveFeedAt, setLiveFeedAt] = useState<{ clanId: string; at: Date } | null>(null);
+  const [liveChatAt, setLiveChatAt] = useState<{ clanId: string; at: Date } | null>(null);
+
+  // Other members' posts/messages only, and not while already looking at that page (its own
+  // "seen" timestamp was written on arrival, so a newer live timestamp would light the dot there).
+  useRealtime({
+    events: ["feed_post"],
+    clanId: clanId ?? undefined,
+    onChange: (frame) => {
+      if (!clanId || !frame || frame.actor === currentUserId || pathname === `/clans/${clanId}`) return;
+      setLiveFeedAt({ clanId, at: new Date() });
+    },
+  });
+  useRealtime({
+    events: ["chat_message"],
+    clanId: clanId ?? undefined,
+    onChange: (frame) => {
+      if (!clanId || !frame || frame.actor === currentUserId || pathname === `/clans/${clanId}/chat`) return;
+      setLiveChatAt({ clanId, at: new Date() });
+    },
+  });
 
   // Reads localStorage, which only exists in the browser — inherently can't be derived during render.
   useEffect(() => {
@@ -131,12 +157,22 @@ export function BottomNav({
               )}
               {item.unreadDot === "feed" && clanId && (
                 <Suspense fallback={null}>
-                  <FeedUnreadDot promise={latestFeedCheckInAtByClan} clanId={clanId} seenAt={seenAt} />
+                  <FeedUnreadDot
+                    promise={latestFeedCheckInAtByClan}
+                    clanId={clanId}
+                    seenAt={seenAt}
+                    liveAt={liveFeedAt?.clanId === clanId ? liveFeedAt.at : null}
+                  />
                 </Suspense>
               )}
               {item.unreadDot === "chat" && clanId && (
                 <Suspense fallback={null}>
-                  <ChatUnreadDot promise={latestClanMessageAtByClan} clanId={clanId} seenAt={chatSeenAt} />
+                  <ChatUnreadDot
+                    promise={latestClanMessageAtByClan}
+                    clanId={clanId}
+                    seenAt={chatSeenAt}
+                    liveAt={liveChatAt?.clanId === clanId ? liveChatAt.at : null}
+                  />
                 </Suspense>
               )}
             </span>
@@ -148,18 +184,26 @@ export function BottomNav({
   );
 }
 
+function latest(a: Date | null, b: Date | null) {
+  if (!a) return b;
+  if (!b) return a;
+  return a > b ? a : b;
+}
+
 /** Isolated so only this leaf ever suspends — the nav links and icon render immediately regardless. */
 function FeedUnreadDot({
   promise,
   clanId,
   seenAt,
+  liveAt,
 }: {
   promise: Promise<FeedCheckInEntry[]>;
   clanId: string;
   seenAt: Date | null;
+  liveAt: Date | null;
 }) {
   const entries = use(promise);
-  const latestCheckInAt = entries.find((e) => e.clanId === clanId)?.latestCheckInAt ?? null;
+  const latestCheckInAt = latest(entries.find((e) => e.clanId === clanId)?.latestCheckInAt ?? null, liveAt);
   const hasUnread = !!latestCheckInAt && (!seenAt || seenAt < latestCheckInAt);
   if (!hasUnread) return null;
   return <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-danger" />;
@@ -169,13 +213,15 @@ function ChatUnreadDot({
   promise,
   clanId,
   seenAt,
+  liveAt,
 }: {
   promise: Promise<ClanChatEntry[]>;
   clanId: string;
   seenAt: Date | null;
+  liveAt: Date | null;
 }) {
   const entries = use(promise);
-  const latestMessageAt = entries.find((e) => e.clanId === clanId)?.latestMessageAt ?? null;
+  const latestMessageAt = latest(entries.find((e) => e.clanId === clanId)?.latestMessageAt ?? null, liveAt);
   const hasUnread = !!latestMessageAt && (!seenAt || seenAt < latestMessageAt);
   if (!hasUnread) return null;
   return <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-danger" />;

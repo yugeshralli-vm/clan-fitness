@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import webpush from "web-push";
 import { db } from "@/db";
 import { notifications, pushSubscriptions, users } from "@/db/schema";
+import { publishUserEvent } from "@/lib/realtime";
 import { logNotificationDelivery } from "./delivery-log";
 import { getPushSubscriptionsForUser, getUnreadNotificationCount } from "./queries";
 import { sendEmailNotification } from "./send-email";
@@ -146,6 +147,7 @@ export async function notifyUser(
     alertsEnabled && user?.email && !options?.skipEmail
       ? sendEmailNotification(userId, user.email, payload)
       : Promise.resolve(),
-    persistNotification(userId, payload),
+    // Chained so the bell refetches only once the row it'll count actually exists.
+    persistNotification(userId, payload).then(() => publishUserEvent(userId, "notifications")),
   ]);
 }

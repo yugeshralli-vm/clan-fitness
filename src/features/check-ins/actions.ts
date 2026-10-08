@@ -8,6 +8,7 @@ import { checkIns } from "@/db/schema";
 import { getClanMembersForClanIds, getUserClans } from "@/features/clans/queries";
 import { notifyUser } from "@/features/notifications/send";
 import { getOrSyncCurrentUser } from "@/lib/current-user";
+import { publishClanEvent } from "@/lib/realtime";
 import { getTodaysCheckIn } from "./queries";
 import type { CheckInType, FoodCheckInValue, FoodStatus } from "./types";
 
@@ -191,6 +192,12 @@ export async function logDailyCheckIn(
   )?.id;
 
   after(() => notifyClansOfCheckIn(user.id, user.name, newlyLoggedTypes, anchorCheckInId));
+  // Every submission, not just newly logged types — an edit (more steps, a new photo) changes the
+  // feed card and can complete a contract just the same.
+  after(async () => {
+    const clanIds = (await getUserClans(user.id)).map((c) => c.clan.id);
+    await publishClanEvent(clanIds, "feed_post", user.id);
+  });
 
   revalidatePath("/logs");
 }

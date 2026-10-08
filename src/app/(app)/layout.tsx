@@ -11,6 +11,7 @@ import { getLatestClanMessageAt, type ClanChatEntry } from "@/features/clan-chat
 import { getUserClans } from "@/features/clans";
 import { AutoEnableNotifications, NotificationBell } from "@/features/notifications";
 import { getUnreadNotificationCount } from "@/features/notifications/queries";
+import { RealtimeProvider } from "@/features/realtime";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
@@ -44,31 +45,36 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const initialUnreadCount: Promise<number> = getUnreadNotificationCount(userId).catch(() => 0);
 
+  // RealtimeProvider holds the tab's one socket to the Railway signal server — wrapping the whole
+  // shell (not just {children}) so the bell and BottomNav's unread dots can subscribe too.
   return (
-    <div className="flex min-h-screen flex-1 flex-col">
-      <header className="fixed inset-x-0 top-0 z-10 border-b border-surface-border bg-surface pt-[env(safe-area-inset-top)]">
-        <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
-          <Link href="/logs" className="shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element -- SVG logo, no benefit from next/image's raster pipeline */}
-            <img src="/logo/clan-fitness-logo.svg" alt="Clan Fitness" className="h-7 w-auto" />
-          </Link>
-          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-            <ClanSwitcher clans={clans} />
-            <NotificationBell initialUnreadCount={initialUnreadCount} />
-            <UserButton />
+    <RealtimeProvider>
+      <div className="flex min-h-screen flex-1 flex-col">
+        <header className="fixed inset-x-0 top-0 z-10 border-b border-surface-border bg-surface pt-[env(safe-area-inset-top)]">
+          <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
+            <Link href="/logs" className="shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element -- SVG logo, no benefit from next/image's raster pipeline */}
+              <img src="/logo/clan-fitness-logo.svg" alt="Clan Fitness" className="h-7 w-auto" />
+            </Link>
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+              <ClanSwitcher clans={clans} />
+              <NotificationBell initialUnreadCount={initialUnreadCount} />
+              <UserButton />
+            </div>
           </div>
-        </div>
-      </header>
-      <main className="flex-1 pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0">
-        <PullToRefresh>{children}</PullToRefresh>
-      </main>
-      <BottomNav
-        clans={clans}
-        latestFeedCheckInAtByClan={latestFeedCheckInAtByClan}
-        latestClanMessageAtByClan={latestClanMessageAtByClan}
-      />
-      <AutoEnableNotifications />
-      <InstallPrompt />
-    </div>
+        </header>
+        <main className="flex-1 pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0">
+          <PullToRefresh>{children}</PullToRefresh>
+        </main>
+        <BottomNav
+          currentUserId={userId}
+          clans={clans}
+          latestFeedCheckInAtByClan={latestFeedCheckInAtByClan}
+          latestClanMessageAtByClan={latestClanMessageAtByClan}
+        />
+        <AutoEnableNotifications />
+        <InstallPrompt />
+      </div>
+    </RealtimeProvider>
   );
 }
