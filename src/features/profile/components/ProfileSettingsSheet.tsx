@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
+import { DeleteAccountSection } from "@/features/account";
 import { GoalsForm } from "@/features/goals/components/GoalsForm";
 import { NotificationPreferencesForm, PushNotificationManager } from "@/features/notifications";
 import { ProfileDetailsForm } from "./ProfileDetailsForm";
@@ -83,6 +84,8 @@ export function ProfileSettingsSheet({
           <PushNotificationManager />
           <hr className="border-surface-border" />
           <NotificationPreferencesForm {...notificationPreferences} />
+          <hr className="border-surface-border" />
+          <DeleteAccountSection />
         </>
       ),
     },

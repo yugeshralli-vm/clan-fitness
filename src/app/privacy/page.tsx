@@ -158,14 +158,17 @@ export default function PrivacyPage() {
         </Section>
 
         <Section title="How long we keep it, and deleting it">
-          <p>
-            We keep your data for as long as your account exists. To delete your account and your data, email {mail} from
-            the address you signed up with. We&apos;ll delete it within 30 days and confirm by email. In-app deletion is
-            coming soon.
+          <p id="delete-account">
+            We keep your data for as long as your account exists. You can delete your account at any time: in the
+            Android app (Profile › Delete account) or on the website (sign in at clanfitness.in, then Profile › Edit
+            profile › Settings › Delete account). If you can&apos;t sign in, email {mail} from the address you signed up
+            with and we&apos;ll delete it within 30 days.
           </p>
           <p>
-            Deleting your account removes your profile, goals, check-ins, photos, comments, reactions, chat messages,
-            notifications and points.
+            Deleting your account permanently removes your profile, goals, check-ins, photos, comments, reactions, chat
+            messages, contract claims, points, notifications and push subscriptions, and your sign-in account. Clans you
+            run are handed to their longest-standing member; a clan with no one else in it is deleted. Other members&apos;
+            own posts stay, including replies to your messages (shown without your original).
           </p>
         </Section>
 
