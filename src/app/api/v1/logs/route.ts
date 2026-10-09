@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { getTodaysCheckIn } from "@/features/check-ins/queries";
+import { getTodaysCheckIn, getUserStreak, getUserWeeklyCount } from "@/features/check-ins/queries";
 import { applyDailyCheckIn } from "@/features/check-ins/log-check-in";
+import { getFoodPhotoUrls } from "@/features/check-ins/types";
 import type {
   FoodCheckInValue,
   FoodStatus,
@@ -16,12 +17,14 @@ import { isValidTimeZone } from "@/lib/timezone-date";
 const FOOD_STATUSES: readonly FoodStatus[] = ["yes", "no", "partial"];
 
 async function buildLogsResponse(user: { id: string; timezone: string }) {
-  const [gym, steps, food, thought, goals] = await Promise.all([
+  const [gym, steps, food, thought, goals, gymStreak, weeklyGymCount] = await Promise.all([
     getTodaysCheckIn(user.id, "gym", user.timezone),
     getTodaysCheckIn(user.id, "steps", user.timezone),
     getTodaysCheckIn(user.id, "food", user.timezone),
     getTodaysCheckIn(user.id, "thought", user.timezone),
     getUserGoals(user.id),
+    getUserStreak(user.id, "gym", user.timezone),
+    getUserWeeklyCount(user.id, "gym", user.timezone),
   ]);
 
   const gymValue = gym?.value as GymCheckInValue | undefined;
@@ -29,13 +32,18 @@ async function buildLogsResponse(user: { id: string; timezone: string }) {
   const foodValue = food?.value as FoodCheckInValue | undefined;
   const thoughtValue = thought?.value as ThoughtCheckInValue | undefined;
   const dailyStepsTarget = goals.find((g) => g.type === "steps")?.targetValue ?? 8000;
+  // Same defaults as the web Log page's summary card (src/app/(app)/logs/page.tsx).
+  const weeklyGymTarget = goals.find((g) => g.type === "gym")?.targetValue ?? 4;
 
   return {
     gym: gym ? { note: gymValue?.note } : null,
     steps: steps ? { count: stepsValue?.count ?? 0 } : null,
-    food: food ? { status: foodValue?.status, note: foodValue?.note } : null,
+    food: food ? { status: foodValue?.status, note: foodValue?.note, photoUrls: getFoodPhotoUrls(foodValue) } : null,
     thought: thought ? { text: thoughtValue?.text ?? "" } : null,
     dailyStepsTarget,
+    weeklyGymCount,
+    weeklyGymTarget,
+    gymStreak,
     hasLoggedToday: !!(gym || steps || food || thought),
   };
 }
