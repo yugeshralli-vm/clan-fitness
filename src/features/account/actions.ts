@@ -2,11 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { getOrSyncCurrentUser } from "@/lib/current-user";
+import { DELETE_ACCOUNT_CONFIRMATION } from "./constants";
 import { deleteAccount } from "./delete-account";
 
 export type DeleteAccountState = { error?: string } | undefined;
-
-export const DELETE_ACCOUNT_CONFIRMATION = "DELETE";
 
 export async function deleteMyAccount(_prevState: DeleteAccountState, formData: FormData): Promise<DeleteAccountState> {
   const user = await getOrSyncCurrentUser();
