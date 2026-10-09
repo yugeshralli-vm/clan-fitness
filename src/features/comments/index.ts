@@ -1,5 +1,5 @@
 export { addComment, addSystemPostComment, deleteComment } from "./actions";
-export { getCommentsForCheckIns, getCommentsForSystemPosts } from "./queries";
+export { getCommentsForCheckIns, getCommentsForSystemPosts, getCommentCountsForCheckIns } from "./queries";
 export type { CommentWithUser } from "./queries";
 export { CommentThread } from "./components/CommentThread";
 export type { CommentTarget } from "./components/CommentThread";

@@ -29,6 +29,11 @@ const isPublicRoute = createRouteMatcher([
   // CRON_SECRET bearer-token check inside the route handler) — without this, auth.protect() 404s
   // the request before it ever reaches that check, silently breaking every cron route.
   "/api/cron(.*)",
+  // Mobile app REST layer — authenticated via `Authorization: Bearer <Clerk session token>`
+  // instead of the browser session cookie. auth.protect() 404s non-browser-shaped requests before
+  // they reach the route handler (see the /join comment above), so each /api/v1 route does its
+  // own getOrSyncCurrentUser()-based 401 check instead, same pattern as /api/cron above.
+  "/api/v1(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

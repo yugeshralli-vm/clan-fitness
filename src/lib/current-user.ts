@@ -3,6 +3,9 @@ import { eq } from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { isValidTimeZone } from "@/lib/timezone-date";
+
+type User = typeof users.$inferSelect;
 
 /**
  * Returns the local `users` row for the signed-in user, upserting it on first sight. Deduped per
@@ -53,4 +56,18 @@ export const getOrSyncCurrentUser = cache(async () => {
 export async function getUserById(id: string) {
   const [user] = await db.select().from(users).where(eq(users.id, id));
   return user ?? null;
+}
+
+/**
+ * Mobile's replacement for web's TimezoneSync.tsx (which re-syncs on every page mount): called
+ * from the /api/v1/logs and /api/v1/feed routes with the device's IANA zone, since those are the
+ * two screens the mobile app's build order treats as "opened daily." Unlike web's syncTimezone
+ * (src/features/profile/actions.ts), this overwrites unconditionally on any difference rather than
+ * only when the stored value is null — users.timezone is NOT NULL DEFAULT 'Asia/Kolkata', so a
+ * null-guard would essentially never fire after the first row insert.
+ */
+export async function refreshUserTimezone(user: User, timezone: string | undefined): Promise<User> {
+  if (!timezone || !isValidTimeZone(timezone) || timezone === user.timezone) return user;
+  const [updated] = await db.update(users).set({ timezone }).where(eq(users.id, user.id)).returning();
+  return updated ?? user;
 }
