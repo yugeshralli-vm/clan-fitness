@@ -36,7 +36,8 @@ export async function logDailyCheckIn(
 
   await applyDailyCheckIn(user, {
     workedOut: formData.get("workedOut") === "on",
-    gymNote: String(formData.get("gymNote") ?? "").trim() || undefined,
+    // Always a string (empty = cleared), never undefined — undefined means "leave the note alone".
+    gymNote: String(formData.get("gymNote") ?? "").trim(),
     stepsCount,
     foodStatus,
     foodNote: String(formData.get("foodNote") ?? "").trim() || undefined,
