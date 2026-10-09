@@ -14,6 +14,7 @@ comment on each other's check-ins, and climb a weekly leaderboard.
 - **Push notifications:** Web Push (VAPID) via a custom service worker
 - **Email:** Resend
 - **File storage:** Vercel Blob (check-in photos)
+- **Realtime:** a small WebSocket signal server on Railway (`realtime/`) — tells open clients what changed so they refetch, instead of polling
 - **Analytics:** Vercel Web Analytics + Speed Insights
 - **Hosting:** Vercel
 
@@ -22,7 +23,8 @@ comment on each other's check-ins, and climb a weekly leaderboard.
 ### Core loop
 - Daily check-ins for gym, steps, and food — up to 3 photos per food log, shown as a carousel
 - Streaks and a weekly leaderboard, scored from step/streak/gym weights (admin-tunable, no deploy needed)
-- Per-clan activity feed with @mention comments and reactions (🔥 👏 👎)
+- Per-clan activity feed with @mention comments and reactions (🔥 👏 👎), updating live as clanmates post
+- Weekly recap post in each clan's feed: Top 3 and Wall of Shame
 
 ### Clans
 - Create a clan or join one via invite code or a shareable link (up to 15 people)
@@ -30,27 +32,69 @@ comment on each other's check-ins, and climb a weekly leaderboard.
 - Nudge members who haven't logged today (capped at once per person per day)
 - A welcome moment and first-time goals prompt right after joining
 
+### Clan chat
+- Per-clan group chat in the bottom nav: @mentions (including @everyone), swipe-to-reply, hold-to-react
+- Messages and reactions arrive live, with who's online and "X is typing…" above the input
+- Notifies only on mentions and replies
+
+### Contracts & levels
+- A daily board of contracts in three tiers (e.g. "10k steps", "Beat your average", "Duel"); each member claims a limited number per day
+- Completed contracts earn EXP toward a profile level, finalized nightly; the board and level bar tick off live before then
+- Duels pair you with a random clanmate, with a live step scoreboard and a push when your rival overtakes you
+- Toasts for clanmates when someone claims or completes a contract
+
 ### Notifications
 - Push (Web Push), email (Resend), and in-app (bell with unread count) — all three fire per event, not one replacing another
 - PWA home-screen app icon badge with the live unread count (Android + iOS 16.4+)
-- Types: comments, mentions, reactions, check-ins, missed-log reminders, nudges, feedback replies, admin broadcasts
+- Per-user preference toggles for comments, mentions, reactions and check-ins
+- Types: comments, mentions, replies, reactions, check-ins, nudges, contract results, duel overtakes, weekly recaps, admin broadcasts
 
 ### Onboarding & PWA
 - Guided flow: sign up → create or join a clan → set goals
 - Installable PWA with a custom install prompt, real app icon/favicon/logo branding, and a service worker
 
-### Feedback
-- Floating feedback button (bottom-sheet chat) for testers to message the admin directly
-- Admin sees and replies to every tester's thread from `/admin`
-
 ### Admin panel
 `/admin`, gated to a fixed account:
 - **Config** — tune leaderboard weights and default targets live, no deploy
 - **Broadcast** — message selected clans or specific individual users, with a reach estimate, a confirm step, and send history
-- **Feedback** — every tester's chat thread in one place
 - Notification delivery health (sent/failed/skipped counts, recent failures)
 
 ## Changelog
+
+### 2026-10-09
+- Live duel scoreboards, overtake alerts, and toasts when clanmates claim or complete contracts ([#118](https://github.com/yugeshralli-vm/clan-fitness/pull/118), merged to main via [#119](https://github.com/yugeshralli-vm/clan-fitness/pull/119))
+- Show who's online and who's typing in clan chat ([#117](https://github.com/yugeshralli-vm/clan-fitness/pull/117))
+- Live updates for the feed, contracts board, level bar, notification bell and unread dots ([#116](https://github.com/yugeshralli-vm/clan-fitness/pull/116))
+- Fall back to the original 2s chat poll while the realtime connection is down ([#115](https://github.com/yugeshralli-vm/clan-fitness/pull/115))
+- Realtime clan chat via a WebSocket signal server on Railway ([#114](https://github.com/yugeshralli-vm/clan-fitness/pull/114))
+
+### 2026-07-21
+- Exclude thought-only entries from the "First one in" contract ([#113](https://github.com/yugeshralli-vm/clan-fitness/pull/113))
+
+### 2026-07-19
+- Show a concrete step target for average/personal-best contracts ([#112](https://github.com/yugeshralli-vm/clan-fitness/pull/112))
+- Wrap long duel matchup text to two lines instead of truncating ([#111](https://github.com/yugeshralli-vm/clan-fitness/pull/111))
+- Show the duel opponent's name and celebrate the match ([#110](https://github.com/yugeshralli-vm/clan-fitness/pull/110))
+- Reorder the bottom nav and make Log a raised center button ([#109](https://github.com/yugeshralli-vm/clan-fitness/pull/109))
+
+### 2026-07-18
+- Keep tab panel height constant across tabs ([#108](https://github.com/yugeshralli-vm/clan-fitness/pull/108))
+- Require full-week membership for Top 3 / Wall of Shame eligibility ([#107](https://github.com/yugeshralli-vm/clan-fitness/pull/107))
+- Raise 10k steps to 50pts; dim completed contract cards ([#106](https://github.com/yugeshralli-vm/clan-fitness/pull/106))
+- Show the live-completion tick on every member's claimed contract ([#105](https://github.com/yugeshralli-vm/clan-fitness/pull/105))
+- Cache live contract/level state so it doesn't flash blank on load ([#104](https://github.com/yugeshralli-vm/clan-fitness/pull/104))
+- Fix a rare repeat level-up celebration after a live level dip ([#103](https://github.com/yugeshralli-vm/clan-fitness/pull/103))
+- Live profile level updates; fix the completion snackbar replaying on revisit ([#102](https://github.com/yugeshralli-vm/clan-fitness/pull/102))
+- Replace contract/level-up toasts with a bigger reward snackbar ([#101](https://github.com/yugeshralli-vm/clan-fitness/pull/101))
+- Notify members when a claimed contract is finalized ([#100](https://github.com/yugeshralli-vm/clan-fitness/pull/100))
+- Live-check completion for contracts satisfied after claiming ([#99](https://github.com/yugeshralli-vm/clan-fitness/pull/99))
+- Celebrate instantly-satisfiable contracts on claim ([#98](https://github.com/yugeshralli-vm/clan-fitness/pull/98))
+- Resize contract thumbnails to 256×256 ([#97](https://github.com/yugeshralli-vm/clan-fitness/pull/97))
+- Add clan contracts: daily contracts, individual EXP and profile levels ([#96](https://github.com/yugeshralli-vm/clan-fitness/pull/96))
+- Fix horizontal scroll on the profile Details tab ([#95](https://github.com/yugeshralli-vm/clan-fitness/pull/95))
+- Add per-user notification preference toggles ([#94](https://github.com/yugeshralli-vm/clan-fitness/pull/94))
+- Add @everyone mentions to clan chat; fix raw markup in reply previews ([#93](https://github.com/yugeshralli-vm/clan-fitness/pull/93))
+- Update the README changelog through #91 ([#92](https://github.com/yugeshralli-vm/clan-fitness/pull/92))
 
 ### 2026-07-17
 - Preserve current tab when switching clans ([#91](https://github.com/yugeshralli-vm/clan-fitness/pull/91))
