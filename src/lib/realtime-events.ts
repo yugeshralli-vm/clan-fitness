@@ -13,4 +13,7 @@ export type RealtimeEvent =
   /** A contract was claimed or the nightly cron resolved the day's claims. */
   | "contracts"
   /** A new notification for this user (user room only). */
-  | "notifications";
+  | "notifications"
+  /** Someone claimed or live-completed a contract — carries a ContractMoment as `data`, the one
+   * event with a payload, since it's shown as-is in a toast rather than triggering a refetch. */
+  | "contract_moment";

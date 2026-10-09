@@ -2,6 +2,7 @@ export { claimContract, fetchContractBoard } from "./actions";
 export type { ClaimContractResult } from "./actions";
 export { levelForPoints, levelProgress, pointsForLevel } from "./level";
 export type { LevelCurveConfig, LevelProgress } from "./level";
+export { ContractMomentToasts } from "./components/ContractMomentToasts";
 export { ContractsCard } from "./components/ContractsCard";
 export { ProfileLevelSummary } from "./components/ProfileLevelSummary";
 export type { ContractBoardEntry, ContractTier } from "./types";

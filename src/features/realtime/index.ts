@@ -1,2 +1,2 @@
-export { RealtimeProvider, usePresence, useRealtime, useTypingIndicator } from "./RealtimeProvider";
+export { RealtimeProvider, usePresence, useRealtime, useRealtimeStream, useTypingIndicator } from "./RealtimeProvider";
 export type { RealtimeFrame } from "./RealtimeProvider";
