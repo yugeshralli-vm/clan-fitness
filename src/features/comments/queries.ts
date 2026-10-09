@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { comments, users } from "@/db/schema";
 
@@ -41,6 +41,31 @@ export async function getCommentsForCheckIns(
     });
   }
   return grouped;
+}
+
+/**
+ * Count-only variant of getCommentsForCheckIns for the mobile feed API, which shows a bare count
+ * badge (no comment bodies) rather than the full thread web loads up front — avoids shipping every
+ * comment's text/author over a mobile network just to discard everything but `.length`.
+ */
+export async function getCommentCountsForCheckIns(
+  checkInIds: string[],
+  clanId: string,
+): Promise<Record<string, number>> {
+  const counts: Record<string, number> = {};
+  if (checkInIds.length === 0) return counts;
+
+  const rows = await db
+    .select({ checkInId: comments.checkInId, count: count() })
+    .from(comments)
+    .where(and(inArray(comments.checkInId, checkInIds), eq(comments.clanId, clanId)))
+    .groupBy(comments.checkInId);
+
+  for (const row of rows) {
+    if (!row.checkInId) continue;
+    counts[row.checkInId] = row.count;
+  }
+  return counts;
 }
 
 export async function getCommentsForSystemPosts(
