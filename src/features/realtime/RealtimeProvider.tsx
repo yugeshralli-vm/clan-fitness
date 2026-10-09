@@ -8,6 +8,11 @@ const REALTIME_URL = process.env.NEXT_PUBLIC_REALTIME_URL;
 const MAX_RECONNECT_DELAY_MS = 30_000;
 /** Coalesces bursts (one check-in fans out to several clans + a notification each) into one refetch. */
 const COALESCE_MS = 250;
+/** How often this tab re-announces "still typing" — well under TYPING_VISIBLE_MS so the indicator
+ * doesn't flicker off between pings while someone keeps typing. */
+const TYPING_SEND_INTERVAL_MS = 2500;
+/** How long "X is typing…" stays up after their last ping (they stopped, or left without sending). */
+const TYPING_VISIBLE_MS = 4000;
 
 /** A "changed" frame from the server, or a synthetic "resync" after the tab comes back to the
  * foreground (phones suspend background tabs and silently drop their sockets, so anything could
@@ -17,6 +22,7 @@ export type RealtimeFrame =
   | { type: "resync" };
 
 type Listener = (frame: RealtimeFrame) => void;
+type TypingListener = (clanId: string, userId: string) => void;
 type Status = "disabled" | "connecting" | "open";
 
 type RealtimeContextValue = {
@@ -26,6 +32,10 @@ type RealtimeContextValue = {
   /** Reconnect with a fresh token so it covers `clanId` — at most once per clan per tab, so a
    * clan the server keeps leaving out (not actually a member) can't cause a reconnect loop. */
   requestJoin: (clanId: string) => void;
+  /** clanId -> user ids with the app open right now. Absent while disconnected (unknown, not empty). */
+  presence: ReadonlyMap<string, readonly string[]>;
+  subscribeTyping: (listener: TypingListener) => () => void;
+  sendTyping: (clanId: string) => void;
 };
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
@@ -41,6 +51,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const listenersRef = useRef(new Set<Listener>());
   const reconnectRef = useRef<() => void>(() => {});
   const joinRequestedRef = useRef(new Set<string>());
+  const [presence, setPresence] = useState<ReadonlyMap<string, readonly string[]>>(() => new Map());
+  const typingListenersRef = useRef(new Set<TypingListener>());
+  const sendRef = useRef<(message: object) => void>(() => {});
 
   useEffect(() => {
     if (!REALTIME_URL) return;
@@ -86,6 +99,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         try {
           const frame = JSON.parse(String(message.data));
           if (frame?.type === "changed") emit(frame);
+          else if (frame?.type === "presence") {
+            setPresence((prev) => new Map(prev).set(frame.clanId, frame.userIds));
+          } else if (frame?.type === "typing") {
+            for (const listener of typingListenersRef.current) listener(frame.clanId, frame.userId);
+          }
         } catch {
           // Ignore anything that isn't one of our frames.
         }
@@ -95,9 +113,14 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         socket = null;
         if (disposed) return;
         setStatus("connecting");
+        setPresence(new Map());
         scheduleReconnect();
       };
     }
+
+    sendRef.current = (message) => {
+      if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+    };
 
     // Swaps the socket for one with a fresh token — e.g. after joining a clan the current token
     // doesn't cover. The old socket's onclose is a no-op once it's no longer `socket`.
@@ -125,6 +148,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     return () => {
       disposed = true;
       reconnectRef.current = () => {};
+      sendRef.current = () => {};
       clearTimeout(reconnectTimer);
       document.removeEventListener("visibilitychange", handleVisibility);
       socket?.close();
@@ -144,8 +168,14 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         joinRequestedRef.current.add(clanId);
         reconnectRef.current();
       },
+      presence,
+      subscribeTyping: (listener) => {
+        typingListenersRef.current.add(listener);
+        return () => typingListenersRef.current.delete(listener);
+      },
+      sendTyping: (clanId) => sendRef.current({ type: "typing", clanId }),
     }),
-    [status, joinedClanIds],
+    [status, joinedClanIds, presence],
   );
 
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
@@ -225,4 +255,72 @@ export function useRealtime({
   useEffect(() => {
     if (needsJoin && clanId) requestJoin?.(clanId);
   }, [needsJoin, clanId, requestJoin]);
+}
+
+/** User ids in `clanId` with the app open right now (including the viewer), or null while that
+ * isn't known — disconnected, or realtime isn't configured. */
+export function usePresence(clanId: string): readonly string[] | null {
+  const ctx = useContext(RealtimeContext);
+  return ctx?.presence.get(clanId) ?? null;
+}
+
+/**
+ * Who else is typing in `clanId`'s chat, plus `notifyTyping` to call on every keystroke (it
+ * throttles itself). Someone drops off after TYPING_VISIBLE_MS without a ping, or as soon as
+ * their message lands.
+ */
+export function useTypingIndicator(clanId: string, currentUserId: string) {
+  const ctx = useContext(RealtimeContext);
+  const [typing, setTyping] = useState<ReadonlyMap<string, number>>(() => new Map());
+  const lastSentRef = useRef(0);
+  const subscribeTyping = ctx?.subscribeTyping;
+  const subscribe = ctx?.subscribe;
+  const sendTyping = ctx?.sendTyping;
+
+  useEffect(() => {
+    if (!subscribeTyping || !subscribe) return;
+    const unsubscribeTyping = subscribeTyping((frameClanId, userId) => {
+      if (frameClanId !== clanId || userId === currentUserId) return;
+      setTyping((prev) => new Map(prev).set(userId, Date.now() + TYPING_VISIBLE_MS));
+    });
+    const unsubscribeChanges = subscribe((frame) => {
+      if (frame.type !== "changed" || frame.event !== "chat_message" || frame.clanId !== clanId || !frame.actor) return;
+      const actor = frame.actor;
+      setTyping((prev) => {
+        if (!prev.has(actor)) return prev;
+        const next = new Map(prev);
+        next.delete(actor);
+        return next;
+      });
+    });
+    return () => {
+      unsubscribeTyping();
+      unsubscribeChanges();
+    };
+  }, [subscribeTyping, subscribe, clanId, currentUserId]);
+
+  // Expire stale entries — scheduled for the soonest expiry rather than ticking on an interval.
+  useEffect(() => {
+    if (typing.size === 0) return;
+    const soonest = Math.min(...typing.values());
+    const timeout = setTimeout(
+      () => setTyping((prev) => new Map([...prev].filter(([, expiresAt]) => expiresAt > Date.now()))),
+      Math.max(0, soonest - Date.now()),
+    );
+    return () => clearTimeout(timeout);
+  }, [typing]);
+
+  function notifyTyping() {
+    const now = Date.now();
+    if (now - lastSentRef.current < TYPING_SEND_INTERVAL_MS) return;
+    lastSentRef.current = now;
+    sendTyping?.(clanId);
+  }
+
+  /** Call after sending, so the next keystroke announces typing again right away. */
+  function resetTyping() {
+    lastSentRef.current = 0;
+  }
+
+  return { typingUserIds: [...typing.keys()], notifyTyping, resetTyping };
 }

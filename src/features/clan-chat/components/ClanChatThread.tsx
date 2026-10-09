@@ -4,11 +4,12 @@ import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { MentionInput, type MentionInputHandle, type MentionMember } from "@/components/shared/MentionInput";
 import { Button } from "@/components/ui/button";
-import { useRealtime } from "@/features/realtime";
+import { usePresence, useRealtime, useTypingIndicator } from "@/features/realtime";
 import { mentionsToPlainText } from "@/lib/mentions";
 import { fetchClanMessages, sendClanMessage } from "../actions";
 import type { ClanMessageRow } from "../queries";
 import { CLAN_MESSAGE_MAX_LENGTH } from "../types";
+import { ChatStatusLine } from "./ChatStatusLine";
 import { ClanChatMessageRow } from "./ClanChatMessageRow";
 
 type ReplyingTo = { id: string; authorName: string; body: string };
@@ -50,6 +51,13 @@ export function ClanChatThread({
     fallbackPollMs: FALLBACK_POLL_INTERVAL_MS,
     onChange: async () => setMessages(await fetchClanMessages(clanId)),
   });
+  const onlineUserIds = usePresence(clanId);
+  const { typingUserIds, notifyTyping, resetTyping } = useTypingIndicator(clanId, currentUser.id);
+
+  function handleTextChange(value: string) {
+    setText(value);
+    if (value.trim()) notifyTyping();
+  }
 
   // The list itself never overflows internally — this page scrolls at the window level (see
   // ClanChatPage's plain flex layout, no fixed-height ancestor), so scrolling has to move the
@@ -90,6 +98,7 @@ export function ClanChatThread({
       },
     ]);
     setText("");
+    resetTyping();
     mentionInputRef.current?.reset();
     setPending(true);
     setError(undefined);
@@ -156,11 +165,19 @@ export function ClanChatThread({
             </button>
           </div>
         )}
+        <div className="mx-auto max-w-2xl px-6 pt-2 empty:hidden">
+          <ChatStatusLine
+            members={members}
+            currentUserId={currentUser.id}
+            onlineUserIds={onlineUserIds}
+            typingUserIds={typingUserIds}
+          />
+        </div>
         <form onSubmit={handleSubmit} className="mx-auto flex max-w-2xl items-center gap-2 px-6 py-3">
           <MentionInput
             ref={mentionInputRef}
             value={text}
-            onChange={setText}
+            onChange={handleTextChange}
             members={members}
             excludeUserId={currentUser.id}
             allowEveryone
