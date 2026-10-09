@@ -3,7 +3,7 @@
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { Avatar } from "@/components/shared/Avatar";
+import { OnlineAvatar } from "@/components/shared/OnlineAvatar";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import type { getClanMembers } from "../queries";
 
@@ -63,7 +63,7 @@ export function ClanLeaderboardSection({
           ({ user, periodCount, periodTarget, periodSteps, periodStepsTarget, streak, stepPct, gymPct }) => (
             <li key={user.id} className="flex min-w-0 items-center gap-3 py-3 first:pt-0 last:pb-0">
               <Link href={`/members/${user.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                <Avatar src={user.avatarUrl} name={user.name} />
+                <OnlineAvatar userId={user.id} src={user.avatarUrl} name={user.name} />
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground">{user.name}</span>
               </Link>
               <button

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
-import { Avatar } from "@/components/shared/Avatar";
+import { OnlineAvatar } from "@/components/shared/OnlineAvatar";
 import { MentionInput, type MentionInputHandle } from "@/components/shared/MentionInput";
 import { parseCommentSegments } from "@/lib/mentions";
 import { addComment, addSystemPostComment, deleteComment } from "../actions";
@@ -77,7 +77,7 @@ export function CommentThread({
           {comments.map((comment) => (
             <li key={comment.id} className="flex min-w-0 items-start gap-2">
               <Link href={`/members/${comment.user.id}`} className="shrink-0">
-                <Avatar src={comment.user.avatarUrl} name={comment.user.name} size={24} />
+                <OnlineAvatar userId={comment.user.id} src={comment.user.avatarUrl} name={comment.user.name} size={24} />
               </Link>
               <p className="min-w-0 flex-1 text-sm text-foreground-secondary">
                 <Link href={`/members/${comment.user.id}`} className="font-semibold text-foreground">

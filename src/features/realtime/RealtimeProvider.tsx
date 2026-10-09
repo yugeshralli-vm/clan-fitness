@@ -346,3 +346,14 @@ export function useRealtimeStream(
     });
   }, [subscribe, event]);
 }
+
+/** Whether `userId` has the app open, per presence in any of the viewer's clans (presence is only
+ * ever sent for clans the viewer is in). False while presence isn't known. */
+export function useIsOnline(userId: string): boolean {
+  const ctx = useContext(RealtimeContext);
+  if (!ctx) return false;
+  for (const userIds of ctx.presence.values()) {
+    if (userIds.includes(userId)) return true;
+  }
+  return false;
+}
