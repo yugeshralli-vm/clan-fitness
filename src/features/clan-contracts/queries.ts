@@ -4,6 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { clanContractClaims, users } from "@/db/schema";
 import { CONTRACT_CATALOG } from "./catalog";
+import { getStepsInWindow } from "./eval-helpers";
 import { kolkataDayStart } from "./resolve";
 import type { ContractBoardEntry } from "./types";
 
@@ -39,12 +40,20 @@ export async function getContractBoard(clanId: string, dayKey: string, viewerUse
 
   const claimByContractId = new Map(claims.map((claim) => [claim.contractId, claim]));
   const dayStart = kolkataDayStart(dayKey);
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
   return Promise.all(
     CONTRACT_CATALOG.map(async (contract) => {
       const claim = claimByContractId.get(contract.id);
       const opponentId = (claim?.meta as Record<string, unknown> | null)?.opponentUserId as string | undefined;
-      const targetSteps = contract.getTarget ? ((await contract.getTarget({ userId: viewerUserId, dayStart })) ?? undefined) : undefined;
+      const [targetSteps, duelSteps] = await Promise.all([
+        contract.getTarget ? contract.getTarget({ userId: viewerUserId, dayStart }).then((t) => t ?? undefined) : undefined,
+        claim && opponentId
+          ? Promise.all([getStepsInWindow(claim.userId, dayStart, dayEnd), getStepsInWindow(opponentId, dayStart, dayEnd)]).then(
+              ([claimant, opponent]) => ({ claimant, opponent }),
+            )
+          : undefined,
+      ]);
       return {
         contract: { id: contract.id, tier: contract.tier, title: contract.title, description: contract.description, points: contract.points },
         claim: claim
@@ -54,6 +63,7 @@ export async function getContractBoard(clanId: string, dayKey: string, viewerUse
               userAvatarUrl: claim.userAvatarUrl,
               status: claim.status,
               opponentName: opponentId ? opponentNameById.get(opponentId) : undefined,
+              duelSteps,
             }
           : null,
         targetSteps,

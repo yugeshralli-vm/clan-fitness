@@ -43,8 +43,23 @@ export type ContractBoardEntry = {
     status: "claimed" | "completed" | "failed";
     /** Set only for needsOpponent (duel) contracts — who the claimant was matched against. */
     opponentName?: string;
+    /** Duels only — both sides' steps so far today, for the live scoreboard on the card. */
+    duelSteps?: { claimant: number; opponent: number };
   } | null;
   /** The viewer's own concrete step target for this contract today, if it has one — see
    * ContractDefinition.getTarget. */
   targetSteps?: number;
+};
+
+/** Payload of a realtime "contract_moment" event — shown as a toast to clanmates with the app open.
+ * Only things already visible on the clan's contract board, so it's safe to relay. */
+export type ContractMoment = {
+  kind: "claimed" | "completed";
+  contractTitle: string;
+  userId: string;
+  userName: string;
+  points: number;
+  /** Duels only — lets the rival get "X challenged you" instead of the generic claim toast. */
+  opponentUserId?: string;
+  opponentName?: string;
 };

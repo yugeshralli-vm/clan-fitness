@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { db } from "@/db";
 import { checkIns, reactions } from "@/db/schema";
+import { announceContractCompletions } from "@/features/clan-contracts/moments";
 import { getClanMembership } from "@/features/clans/queries";
 import { notifyUser } from "@/features/notifications/send";
 import { getOrSyncCurrentUser } from "@/lib/current-user";
@@ -58,6 +59,7 @@ export async function toggleReaction(
 
   revalidatePath(`/clans/${clanId}`);
   after(() => publishClanEvent(clanId, "feed_engagement", user.id));
+  after(() => announceContractCompletions(user));
 
   const summaries = await getReactionsForCheckIns([checkInId], clanId, user.id);
   return { summary: summaries[checkInId] ?? {} };
@@ -94,6 +96,7 @@ export async function toggleSystemPostReaction(
 
   revalidatePath(`/clans/${clanId}`);
   after(() => publishClanEvent(clanId, "feed_engagement", user.id));
+  after(() => announceContractCompletions(user));
 
   const summaries = await getReactionsForSystemPosts([systemPostId], clanId, user.id);
   return { summary: summaries[systemPostId] ?? {} };
@@ -135,6 +138,7 @@ export async function toggleClanMessageReaction(
 
   revalidatePath(`/clans/${clanId}/chat`);
   after(() => publishClanEvent(clanId, "chat_reaction", user.id));
+  after(() => announceContractCompletions(user));
 
   const summaries = await getReactionsForClanMessages([clanMessageId], clanId, user.id);
   return { summary: summaries[clanMessageId] ?? {} };
