@@ -10,6 +10,8 @@ const isPublicRoute = createRouteMatcher([
   // don't send normal browser Accept headers — protect() responds to those with a 404 rather than
   // a redirect, so the shared link's preview showed "404: This page could not be found".
   "/join(.*)",
+  // Linked from the site footer and from Android's Health Connect permission screen.
+  "/privacy",
   // PWA manifest icons — extensionless, so unlike .webmanifest they aren't excluded by the
   // matcher below, and browsers fetch them unauthenticated during install-eligibility checks.
   "/icon-192",
