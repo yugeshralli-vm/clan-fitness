@@ -3,10 +3,12 @@
 import { auth } from "@clerk/nextjs/server";
 import { and, count, eq, isNotNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { db } from "@/db";
 import { clanContractClaims } from "@/db/schema";
 import { getAppConfig } from "@/features/admin/config";
 import { getClanMembers, getClanMembership } from "@/features/clans/queries";
+import { publishClanEvent } from "@/lib/realtime";
 import { userDayKey } from "@/lib/timezone-date";
 import { getContract, WAGER_STAKE } from "./catalog";
 import { getContractBoard } from "./queries";
@@ -107,6 +109,7 @@ export async function claimContract(clanId: string, contractId: string): Promise
   }
 
   revalidatePath(`/clans/${clanId}/contracts`);
+  after(() => publishClanEvent(clanId, "contracts", access.userId));
 
   // A simpler contract (e.g. "log any check-in") can already be satisfied the instant it's
   // claimed — this is purely a celebratory preview for the client, see checkLiveCompletion.

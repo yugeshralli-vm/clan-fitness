@@ -9,6 +9,7 @@ import { getClanMembers, getClanMembership } from "@/features/clans/queries";
 import { notifyUser } from "@/features/notifications/send";
 import { extractMentionedUserIds, mentionsToPlainText } from "@/lib/mentions";
 import { getOrSyncCurrentUser } from "@/lib/current-user";
+import { publishClanEvent } from "@/lib/realtime";
 import { COMMENT_MAX_LENGTH, COMMENT_MAX_RAW_LENGTH } from "./types";
 import type { CommentWithUser } from "./queries";
 
@@ -40,6 +41,7 @@ export async function addComment(
     .returning();
 
   revalidatePath(`/clans/${clanId}`);
+  after(() => publishClanEvent(clanId, "feed_engagement", user.id));
 
   // Mention targets must be members of this same clan — the commenter's own membership was
   // already verified above.
@@ -110,6 +112,7 @@ export async function addSystemPostComment(
     .returning();
 
   revalidatePath(`/clans/${clanId}`);
+  after(() => publishClanEvent(clanId, "feed_engagement", user.id));
 
   // Mention targets must be members of this same clan — the commenter's own membership was
   // already verified above.
@@ -159,6 +162,7 @@ export async function deleteComment(commentId: string): Promise<{ error?: string
 
   await db.delete(comments).where(eq(comments.id, commentId));
   revalidatePath(`/clans/${existing.clanId}`);
+  after(() => publishClanEvent(existing.clanId, "feed_engagement", user.id));
 
   return {};
 }

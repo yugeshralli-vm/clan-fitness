@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { celebrate } from "@/components/ui/reward-snackbar";
 import { toast } from "@/components/ui/toast";
+import { useRealtime } from "@/features/realtime";
 import { claimContract, fetchContractBoard, getLiveClaimProgress } from "../actions";
 import type { ContractBoardEntry, ContractTier } from "../types";
 import { ContractCard, TierStars } from "./ContractCard";
 
-const POLL_INTERVAL_MS = 5000;
+/** The original board poll rate — only used while the realtime socket isn't open. */
+const FALLBACK_POLL_INTERVAL_MS = 5000;
 const TIER_ORDER: ContractTier[] = [1, 2, 3];
 const TIER_TITLE: Record<ContractTier, string> = { 1: "Noob", 2: "Veteran", 3: "Legend" };
 
@@ -73,35 +75,47 @@ export function ContractsBoard({
   const atDailyCap = myClaimsToday >= maxClaimsPerMemberPerDay;
   const celebratedRef = useRef<Set<string>>(loadCelebratedClaims(currentUserId));
 
-  useEffect(() => {
-    let cancelled = false;
+  // The clan this board is currently mounted for (null after unmount) — a refresh that resolves
+  // after unmount or a clan switch is dropped instead of overwriting the newer board.
+  const mountedClanRef = useRef<string | null>(clanId);
 
-    async function poll() {
-      const [freshBoard, progress] = await Promise.all([fetchContractBoard(clanId), getLiveClaimProgress(clanId)]);
-      if (cancelled) return;
-      setBoard(freshBoard);
-      const completedIds = new Set(progress.filter((p) => p.completed).map((p) => p.contractId));
-      setLiveCompletedIds(completedIds);
-      saveLiveCompleted(currentUserId, clanId, completedIds);
-      // Only celebrate the viewer's own completions — seeing everyone else's claims checked off
-      // is the point of the tick, but a toast for someone else's contract would just be noise.
-      for (const item of progress) {
-        if (item.completed && item.userId === currentUserId && !celebratedRef.current.has(item.claimId)) {
-          celebratedRef.current.add(item.claimId);
-          saveCelebratedClaims(currentUserId, celebratedRef.current);
-          celebrate.contractComplete(item.title, item.points);
-        }
+  async function refresh() {
+    const forClanId = clanId;
+    const [freshBoard, progress] = await Promise.all([fetchContractBoard(forClanId), getLiveClaimProgress(forClanId)]);
+    if (mountedClanRef.current !== forClanId) return;
+    setBoard(freshBoard);
+    const completedIds = new Set(progress.filter((p) => p.completed).map((p) => p.contractId));
+    setLiveCompletedIds(completedIds);
+    saveLiveCompleted(currentUserId, clanId, completedIds);
+    // Only celebrate the viewer's own completions — seeing everyone else's claims checked off
+    // is the point of the tick, but a toast for someone else's contract would just be noise.
+    for (const item of progress) {
+      if (item.completed && item.userId === currentUserId && !celebratedRef.current.has(item.claimId)) {
+        celebratedRef.current.add(item.claimId);
+        saveCelebratedClaims(currentUserId, celebratedRef.current);
+        celebrate.contractComplete(item.title, item.points);
       }
     }
+  }
 
-    // Runs immediately, not just on the first interval tick, so the board reflects live state
-    // right away instead of showing stale/blank data for the first 5s of every visit.
-    poll();
-    const interval = setInterval(poll, POLL_INTERVAL_MS);
+  // Contract progress depends on check-ins, comments and reactions, not just claims — so any of
+  // those in this clan can tick a card off.
+  useRealtime({
+    events: ["contracts", "feed_post", "feed_engagement"],
+    clanId,
+    fallbackPollMs: FALLBACK_POLL_INTERVAL_MS,
+    onChange: refresh,
+  });
+
+  // Runs immediately on mount so the board reflects live state right away instead of only after
+  // the first change/poll.
+  useEffect(() => {
+    mountedClanRef.current = clanId;
+    refresh();
     return () => {
-      cancelled = true;
-      clearInterval(interval);
+      mountedClanRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is re-created each render; mount/clan switch is what matters
   }, [clanId, currentUserId]);
 
   function handleClaim(contractId: string) {

@@ -8,7 +8,7 @@ import { clanMessages } from "@/db/schema";
 import { getClanMembers, getClanMembership } from "@/features/clans/queries";
 import { notifyUser } from "@/features/notifications/send";
 import { extractMentionedUserIds, MENTION_EVERYONE_ID, mentionsToPlainText } from "@/lib/mentions";
-import { publishClanChange, signRealtimeToken } from "@/lib/realtime";
+import { publishClanEvent } from "@/lib/realtime";
 import { getClanMessages } from "./queries";
 import { CLAN_MESSAGE_MAX_LENGTH, CLAN_MESSAGE_MAX_RAW_LENGTH } from "./types";
 
@@ -63,7 +63,7 @@ export async function sendClanMessage(
 
   await db.insert(clanMessages).values({ clanId, userId: access.userId, body, replyToMessageId });
   // Before the notification fan-out below so other members' chats update without waiting on it.
-  await publishClanChange(clanId);
+  await publishClanEvent(clanId, "chat_message", access.userId);
 
   const members = await getClanMembers(clanId);
   const author = members.find((m) => m.user.id === access.userId);
@@ -116,12 +116,4 @@ export async function fetchClanMessages(clanId: string) {
   const access = await resolveAccess(clanId);
   if (!access.allowed) return [];
   return getClanMessages(clanId, access.userId);
-}
-
-/** Fresh signed token for the realtime socket — fetched on every (re)connect since tokens are
- * short-lived. Null when the user isn't a member or realtime isn't configured. */
-export async function getClanChatRealtimeToken(clanId: string) {
-  const access = await resolveAccess(clanId);
-  if (!access.allowed) return null;
-  return signRealtimeToken(access.userId, clanId);
 }

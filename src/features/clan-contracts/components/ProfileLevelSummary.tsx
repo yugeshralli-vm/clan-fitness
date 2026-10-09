@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LevelBadge } from "@/components/shared/LevelBadge";
 import { celebrate } from "@/components/ui/reward-snackbar";
+import { useRealtime } from "@/features/realtime";
 import { getMyLivePendingPoints } from "../actions";
 import { levelProgress } from "../level";
 import type { LevelCurveConfig } from "../level";
 
-const POLL_INTERVAL_MS = 5000;
+/** The original poll rate — only used while the realtime socket isn't open. */
+const FALLBACK_POLL_INTERVAL_MS = 5000;
 
 function levelSeenKey(userId: string) {
   return `profile-level-seen:${userId}`;
@@ -42,22 +44,30 @@ export function ProfileLevelSummary({
   );
   const { level, pointsIntoLevel, pointsForNextLevel } = progress;
 
+  const mountedRef = useRef(false);
+
+  async function refresh() {
+    const points = await getMyLivePendingPoints();
+    if (!mountedRef.current) return;
+    setPendingPoints(points);
+    localStorage.setItem(pendingPointsKey(userId), String(points));
+  }
+
+  // Pending points can move with activity in any of the user's clans (a duel opponent's check-in,
+  // a comment completing a contract) or when the nightly cron resolves claims.
+  useRealtime({
+    events: ["contracts", "feed_post", "feed_engagement"],
+    fallbackPollMs: FALLBACK_POLL_INTERVAL_MS,
+    onChange: refresh,
+  });
+
   useEffect(() => {
-    let cancelled = false;
-
-    async function poll() {
-      const points = await getMyLivePendingPoints();
-      if (cancelled) return;
-      setPendingPoints(points);
-      localStorage.setItem(pendingPointsKey(userId), String(points));
-    }
-
-    poll();
-    const interval = setInterval(poll, POLL_INTERVAL_MS);
+    mountedRef.current = true;
+    refresh();
     return () => {
-      cancelled = true;
-      clearInterval(interval);
+      mountedRef.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is re-created each render; mount/user switch is what matters
   }, [userId]);
 
   // Resolution happens server-side via a daily cron, not a live session, so a level-up is

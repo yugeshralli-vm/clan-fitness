@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/shared/Avatar";
 import { LevelBadge } from "@/components/shared/LevelBadge";
 import { PhotoCarousel } from "@/components/ui/photo-carousel";
@@ -14,6 +14,7 @@ import type { ClanMemberOption } from "@/features/comments/components/CommentThr
 import type { CommentWithUser } from "@/features/comments/queries";
 import { levelForPoints, type LevelCurveConfig } from "@/features/clan-contracts/level";
 import { ReactionBar } from "@/features/reactions/components/ReactionBar";
+import { useRealtime } from "@/features/realtime";
 import type { ReactionSummary } from "@/features/reactions/types";
 import { toast } from "@/components/ui/toast";
 // Direct path, not the "@/features/system-posts" barrel — that barrel also exports server-only
@@ -21,7 +22,7 @@ import { toast } from "@/components/ui/toast";
 // client if imported from here (see the src/features/*/queries.ts "server-only" guard).
 import { SystemPostCard } from "@/features/system-posts/components/SystemPostCard";
 import type { SystemPostForFeed } from "@/features/system-posts";
-import { loadMoreFeed } from "../actions";
+import { loadFeedHead, loadMoreFeed } from "../actions";
 import {
   dedupeEntriesForDisplay,
   describeCheckIn,
@@ -63,6 +64,7 @@ export function FeedList({
   highlightCheckInId?: string;
 }) {
   const [rows, setRows] = useState(initialRows);
+  const [systemPosts, setSystemPosts] = useState(initialSystemPosts);
   const [reactions, setReactions] = useState(initialReactions);
   const [comments, setComments] = useState(initialComments);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -82,6 +84,38 @@ export function FeedList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const rowsRef = useRef(rows);
+  useEffect(() => {
+    rowsRef.current = rows;
+  });
+
+  // New check-ins, edits, comments and reactions from clanmates show up without a pull-to-refresh.
+  // No fallback poll — without the socket the feed refreshes on visit, as before.
+  useRealtime({
+    events: ["feed_post", "feed_engagement"],
+    clanId,
+    onChange: async () => {
+      let head;
+      try {
+        head = await loadFeedHead(clanId, viewerTimezone);
+      } catch {
+        return; // Background refresh — the next event or visit will catch up.
+      }
+      // Replace the latest page, but keep any older "load more" pages the viewer already pulled in.
+      const headIds = new Set(head.rows.map((row) => row.checkIn.id));
+      const oldestHeadAt = head.rows[head.rows.length - 1]?.checkIn.createdAt;
+      const olderRows =
+        head.hasMore && oldestHeadAt
+          ? rowsRef.current.filter((row) => !headIds.has(row.checkIn.id) && row.checkIn.createdAt < oldestHeadAt)
+          : [];
+      setRows([...head.rows, ...olderRows]);
+      if (olderRows.length === 0) setHasMore(head.hasMore);
+      setSystemPosts(head.systemPosts);
+      setReactions((prev) => ({ ...prev, ...head.reactions }));
+      setComments((prev) => ({ ...prev, ...head.comments }));
+    },
+  });
+
   async function handleLoadMore() {
     const cursor = rows[rows.length - 1]?.checkIn.createdAt;
     if (!cursor) return;
@@ -100,9 +134,9 @@ export function FeedList({
     }
   }
 
-  // System posts aren't paginated (initialSystemPosts is a clan's whole history, fetched once —
-  // see getSystemPostsForClan), so they don't need their own state; only rows grows on "load more".
-  const sections = groupByDay(mergeFeedCards(groupByUserAndDay(rows, viewerTimezone), initialSystemPosts, viewerTimezone));
+  // System posts aren't paginated (a clan's whole history is fetched at once — see
+  // getSystemPostsForClan); they're only state so a realtime refresh can add a new weekly recap.
+  const sections = groupByDay(mergeFeedCards(groupByUserAndDay(rows, viewerTimezone), systemPosts, viewerTimezone));
 
   return (
     <div className="flex flex-col gap-6">

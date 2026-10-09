@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { notifications, pushSubscriptions, users } from "@/db/schema";
 import { getOrSyncCurrentUser } from "@/lib/current-user";
-import { getNotificationsForUser } from "./queries";
+import { getNotificationsForUser, getUnreadNotificationCount } from "./queries";
 import { sendTestPushNotification } from "./send";
 import type { PushSubscriptionInput } from "./types";
 
@@ -64,6 +64,13 @@ export async function getNotificationsAndMarkRead() {
     .where(and(eq(notifications.userId, user.id), isNull(notifications.readAt)));
 
   return items;
+}
+
+/** For the bell to refresh its badge when the realtime server says a notification arrived. */
+export async function fetchUnreadNotificationCount(): Promise<number> {
+  const user = await getOrSyncCurrentUser();
+  if (!user) return 0;
+  return getUnreadNotificationCount(user.id);
 }
 
 export async function updateNotificationPreferences(
