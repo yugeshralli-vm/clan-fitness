@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { db } from "@/db";
 import { checkIns } from "@/db/schema";
+import { getDuelStandings, notifyDuelOvertakes } from "@/features/clan-contracts/duels";
+import { announceContractCompletions } from "@/features/clan-contracts/moments";
 import { getClanMembersForClanIds, getUserClans } from "@/features/clans/queries";
 import { notifyUser } from "@/features/notifications/send";
 import { getOrSyncCurrentUser } from "@/lib/current-user";
@@ -81,6 +83,9 @@ export async function logDailyCheckIn(
     .filter((v): v is string => typeof v === "string" && BLOB_URL_PATTERN.test(v))
     .slice(0, 3);
   const hasPhoto = photoUrls.length > 0;
+
+  // Only needed when steps change; taken before the write so a lead change can be detected after.
+  const duelsBefore = count !== undefined ? await getDuelStandings(user.id) : [];
 
   const workedOut = formData.get("workedOut") === "on";
   const thought = String(formData.get("thought") ?? "").trim().slice(0, 200) || undefined;
@@ -198,6 +203,8 @@ export async function logDailyCheckIn(
     const clanIds = (await getUserClans(user.id)).map((c) => c.clan.id);
     await publishClanEvent(clanIds, "feed_post", user.id);
   });
+  after(() => notifyDuelOvertakes(user, duelsBefore));
+  after(() => announceContractCompletions(user));
 
   revalidatePath("/logs");
 }

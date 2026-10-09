@@ -12,6 +12,7 @@ import { publishClanEvent } from "@/lib/realtime";
 import { userDayKey } from "@/lib/timezone-date";
 import { getContract, WAGER_STAKE } from "./catalog";
 import { getContractBoard } from "./queries";
+import { announceContractCompletions, publishContractMoment } from "./moments";
 import { kolkataDayStart } from "./resolve";
 import type { ContractBoardEntry } from "./types";
 
@@ -114,6 +115,23 @@ export async function claimContract(clanId: string, contractId: string): Promise
   // A simpler contract (e.g. "log any check-in") can already be satisfied the instant it's
   // claimed — this is purely a celebratory preview for the client, see checkLiveCompletion.
   const board = await getContractBoard(clanId, dayKey, access.userId);
+  const claimEntry = board.find((entry) => entry.contract.id === contractId)?.claim;
+  if (claimEntry) {
+    const claimant = { id: access.userId, name: claimEntry.userName };
+    after(async () => {
+      await publishContractMoment(clanId, {
+        kind: "claimed",
+        contractTitle: contract.title,
+        userId: claimant.id,
+        userName: claimant.name,
+        points: contract.points,
+        opponentUserId: meta?.opponentUserId as string | undefined,
+        opponentName: claimEntry.opponentName,
+      });
+      // A contract can already be satisfied the moment it's claimed (e.g. "log any check-in").
+      await announceContractCompletions(claimant);
+    });
+  }
   const completed = await checkLiveCompletion(clanId, access.userId, contractId, dayKey, meta);
   const justCompleted = completed ? { claimId: inserted[0].id, title: contract.title, points: contract.points } : undefined;
 

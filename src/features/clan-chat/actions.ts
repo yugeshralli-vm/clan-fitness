@@ -3,8 +3,10 @@
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { db } from "@/db";
 import { clanMessages } from "@/db/schema";
+import { announceContractCompletions } from "@/features/clan-contracts/moments";
 import { getClanMembers, getClanMembership } from "@/features/clans/queries";
 import { notifyUser } from "@/features/notifications/send";
 import { extractMentionedUserIds, MENTION_EVERYONE_ID, mentionsToPlainText } from "@/lib/mentions";
@@ -67,6 +69,7 @@ export async function sendClanMessage(
 
   const members = await getClanMembers(clanId);
   const author = members.find((m) => m.user.id === access.userId);
+  if (author) after(() => announceContractCompletions(author.user));
   const memberIds = new Set(members.map((m) => m.user.id));
   const rawMentionedIds = extractMentionedUserIds(body);
   // @everyone broadcasts to the whole clan instead of naming individuals — its sentinel id isn't

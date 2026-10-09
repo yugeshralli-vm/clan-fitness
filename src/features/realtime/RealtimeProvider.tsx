@@ -18,7 +18,7 @@ const TYPING_VISIBLE_MS = 4000;
  * foreground (phones suspend background tabs and silently drop their sockets, so anything could
  * have been missed). Frames never carry content — subscribers refetch through server actions. */
 export type RealtimeFrame =
-  | { type: "changed"; event: RealtimeEvent; clanId?: string; actor?: string }
+  | { type: "changed"; event: RealtimeEvent; clanId?: string; actor?: string; data?: unknown }
   | { type: "resync" };
 
 type Listener = (frame: RealtimeFrame) => void;
@@ -323,4 +323,26 @@ export function useTypingIndicator(clanId: string, currentUserId: string) {
   }
 
   return { typingUserIds: [...typing.keys()], notifyTyping, resetTyping };
+}
+
+/** Every frame of one event, uncoalesced and with no catch-up or polling — for events that carry
+ * their own `data` and are shown once as they happen (e.g. contract moments), rather than being a
+ * cue to refetch. Missed frames (disconnected, tab in background) are simply not shown. */
+export function useRealtimeStream(
+  event: RealtimeEvent,
+  onFrame: (frame: Extract<RealtimeFrame, { type: "changed" }>) => void,
+) {
+  const ctx = useContext(RealtimeContext);
+  const subscribe = ctx?.subscribe;
+  const onFrameRef = useRef(onFrame);
+  useEffect(() => {
+    onFrameRef.current = onFrame;
+  });
+
+  useEffect(() => {
+    if (!subscribe) return;
+    return subscribe((frame) => {
+      if (frame.type === "changed" && frame.event === event) onFrameRef.current(frame);
+    });
+  }, [subscribe, event]);
 }

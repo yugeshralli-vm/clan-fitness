@@ -8,6 +8,7 @@ import { InstallPrompt } from "@/components/shared/InstallPrompt";
 import { PullToRefresh } from "@/components/shared/PullToRefresh";
 import { getLatestCheckInAt } from "@/features/check-ins";
 import { getLatestClanMessageAt, type ClanChatEntry } from "@/features/clan-chat";
+import { ContractMomentToasts } from "@/features/clan-contracts";
 import { getUserClans } from "@/features/clans";
 import { AutoEnableNotifications, NotificationBell } from "@/features/notifications";
 import { getUnreadNotificationCount } from "@/features/notifications/queries";
@@ -72,6 +73,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           latestFeedCheckInAtByClan={latestFeedCheckInAtByClan}
           latestClanMessageAtByClan={latestClanMessageAtByClan}
         />
+        <ContractMomentToasts currentUserId={userId} />
         <AutoEnableNotifications />
         <InstallPrompt />
       </div>
