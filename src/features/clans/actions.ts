@@ -4,12 +4,13 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { clanMemberships, clans, comments, reactions, systemPosts } from "@/db/schema";
+import { clanMemberships, clans } from "@/db/schema";
 import { getUsersLoggedToday } from "@/features/check-ins";
 import { hasBeenNudgedToday } from "@/features/notifications/queries";
 import { notifyUser } from "@/features/notifications/send";
 import { getOrSyncCurrentUser, getUserById } from "@/lib/current-user";
 import { generateInviteCode } from "@/lib/invite-code";
+import { deleteClanData } from "./delete-clan";
 import { pickNudgeMessage } from "./nudge-messages";
 import { getClanById, getClanByInviteCode, getClanMemberCount, getClanMembership } from "./queries";
 
@@ -130,17 +131,9 @@ export async function deleteClan(
     return { error: "Type the clan name exactly to confirm." };
   }
 
-  // No transaction (the Neon HTTP driver doesn't support them, same as makeAdmin below) — delete
-  // children before the parent row, since none of these FKs cascade. checkIns are untouched:
-  // they're personal records with no clanId of their own (see schema.ts), so members keep their
-  // own log history — only this clan's shared reactions/comments/membership/system-post rows go
-  // away. systemPosts must go after reactions/comments (which can FK to it) and before
-  // clanMemberships/clans (which it FKs to).
-  await db.delete(reactions).where(eq(reactions.clanId, clanId));
-  await db.delete(comments).where(eq(comments.clanId, clanId));
-  await db.delete(systemPosts).where(eq(systemPosts.clanId, clanId));
-  await db.delete(clanMemberships).where(eq(clanMemberships.clanId, clanId));
-  await db.delete(clans).where(eq(clans.id, clanId));
+  // Shared with account deletion — also removes chat messages and contract claims, which this
+  // used to miss (their foreign keys made deleting any clan with chat history fail).
+  await deleteClanData(clanId);
 
   revalidatePath("/logs");
   redirect("/logs");
