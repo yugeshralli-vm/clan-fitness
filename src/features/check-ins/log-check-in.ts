@@ -57,19 +57,22 @@ export async function applyDailyCheckIn(
   }
 
   const existingGym = await getTodaysCheckIn(user.id, "gym", user.timezone);
-  if (input.workedOut || existingGym) {
-    const gymNote = input.gymNote?.trim() || undefined;
-    if (existingGym) {
+  const gymNote = input.gymNote?.trim() || undefined;
+  if (existingGym) {
+    // Only rewrite the note when the caller sent the field at all (an empty string clears it). A
+    // partial update that omits it — the app's background step sync posts steps alone — must not
+    // wipe a note written earlier in the day.
+    if (input.gymNote !== undefined) {
       await db.update(checkIns).set({ value: { note: gymNote } }).where(eq(checkIns.id, existingGym.id));
-      todaysCheckIns.push({ id: existingGym.id, createdAt: existingGym.createdAt });
-    } else {
-      const [row] = await db
-        .insert(checkIns)
-        .values({ userId: user.id, type: "gym", value: { note: gymNote }, visibility: "public_to_clan" })
-        .returning({ id: checkIns.id, createdAt: checkIns.createdAt });
-      newlyLoggedTypes.push("gym");
-      todaysCheckIns.push(row);
     }
+    todaysCheckIns.push({ id: existingGym.id, createdAt: existingGym.createdAt });
+  } else if (input.workedOut) {
+    const [row] = await db
+      .insert(checkIns)
+      .values({ userId: user.id, type: "gym", value: { note: gymNote }, visibility: "public_to_clan" })
+      .returning({ id: checkIns.id, createdAt: checkIns.createdAt });
+    newlyLoggedTypes.push("gym");
+    todaysCheckIns.push(row);
   }
 
   if (input.stepsCount !== undefined) {
