@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
-import { Avatar } from "@/components/shared/Avatar";
+import { OnlineAvatar } from "@/components/shared/OnlineAvatar";
 import { getFilteredHistoryForUser, getUserStepsByDay } from "@/features/check-ins";
 import { getSharedClans } from "@/features/clans";
 import { getUserGoals } from "@/features/goals";
@@ -47,7 +47,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6 px-6 py-8">
       <div className="flex items-center gap-3">
-        <Avatar src={target.avatarUrl} name={target.name} size={56} />
+        <OnlineAvatar userId={target.id} src={target.avatarUrl} name={target.name} size={56} />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-bold text-foreground">{target.name}</h1>
           {target.bio && <p className="truncate text-sm text-foreground-secondary">{target.bio}</p>}

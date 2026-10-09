@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { Avatar } from "@/components/shared/Avatar";
+import { OnlineAvatar } from "@/components/shared/OnlineAvatar";
 import { LevelBadge } from "@/components/shared/LevelBadge";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,7 @@ export function NudgeSheet({
     <>
       <div className="flex w-full min-w-0 items-center gap-3">
         <Link href={`/members/${memberUserId}`} className="shrink-0">
-          <Avatar src={memberAvatarUrl} name={memberName} />
+          <OnlineAvatar userId={memberUserId} src={memberAvatarUrl} name={memberName} />
         </Link>
         <button
           type="button"

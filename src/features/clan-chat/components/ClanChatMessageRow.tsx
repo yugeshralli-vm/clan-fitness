@@ -5,6 +5,7 @@ import { motion, useMotionValue, useTransform } from "motion/react";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/shared/Avatar";
+import { OnlineAvatar } from "@/components/shared/OnlineAvatar";
 import { LevelBadge } from "@/components/shared/LevelBadge";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { toast } from "@/components/ui/toast";
@@ -119,7 +120,7 @@ export function ClanChatMessageRow({
       >
         {!mine && (
           <Link href={`/members/${message.userId}`} className="shrink-0">
-            <Avatar src={message.authorAvatarUrl} name={message.authorName} size={28} />
+            <OnlineAvatar userId={message.userId} src={message.authorAvatarUrl} name={message.authorName} size={28} />
           </Link>
         )}
         <div className={`flex min-w-0 max-w-[75%] flex-col gap-0.5 ${mine ? "items-end" : "items-start"}`}>

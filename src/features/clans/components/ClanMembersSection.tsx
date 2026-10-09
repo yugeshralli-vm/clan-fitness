@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Avatar } from "@/components/shared/Avatar";
+import { OnlineAvatar } from "@/components/shared/OnlineAvatar";
 import { LevelBadge } from "@/components/shared/LevelBadge";
 import { levelForPoints, type LevelCurveConfig } from "@/features/clan-contracts/level";
 import { LeaveClanSheet } from "./LeaveClanSheet";
@@ -67,7 +67,7 @@ export function ClanMembersSection({
               ) : (
                 <div className="flex min-w-0 items-center gap-3">
                   <Link href={`/members/${user.id}`} className="shrink-0">
-                    <Avatar src={user.avatarUrl} name={user.name} />
+                    <OnlineAvatar userId={user.id} src={user.avatarUrl} name={user.name} />
                   </Link>
                   <div className="min-w-0 flex-1">
                     <p className="flex min-w-0 items-center gap-1.5 truncate text-sm text-foreground">

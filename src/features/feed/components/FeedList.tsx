@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Avatar } from "@/components/shared/Avatar";
+import { OnlineAvatar } from "@/components/shared/OnlineAvatar";
 import { LevelBadge } from "@/components/shared/LevelBadge";
 import { PhotoCarousel } from "@/components/ui/photo-carousel";
 import type { FeedRow } from "@/features/check-ins";
@@ -186,7 +186,7 @@ export function FeedList({
                   }`}
                 >
                   <Link href={`/members/${group.user.id}`} className="shrink-0">
-                    <Avatar src={group.user.avatarUrl} name={group.user.name} />
+                    <OnlineAvatar userId={group.user.id} src={group.user.avatarUrl} name={group.user.name} />
                   </Link>
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
                     <div className="flex items-center justify-between gap-2">
