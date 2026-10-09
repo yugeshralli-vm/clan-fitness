@@ -14,7 +14,7 @@ comment on each other's check-ins, and climb a weekly leaderboard.
 - **Push notifications:** Web Push (VAPID) via a custom service worker
 - **Email:** Resend
 - **File storage:** Vercel Blob (check-in photos)
-- **Realtime:** a small WebSocket signal server on Railway (`realtime/`) — tells open clients what changed so they refetch, instead of polling
+- **Realtime:** a small WebSocket signal server on Railway (`realtime/`, Singapore, auto-deployed from `main`) — tells open clients what changed so they refetch, instead of polling
 - **Analytics:** Vercel Web Analytics + Speed Insights
 - **Hosting:** Vercel
 
@@ -34,7 +34,7 @@ comment on each other's check-ins, and climb a weekly leaderboard.
 
 ### Clan chat
 - Per-clan group chat in the bottom nav: @mentions (including @everyone), swipe-to-reply, hold-to-react
-- Messages and reactions arrive live, with who's online and "X is typing…" above the input
+- Messages and reactions arrive live, with who's online and "X is typing…" above the input, and a green dot on online clanmates' avatars
 - Notifies only on mentions and replies
 
 ### Contracts & levels
@@ -60,6 +60,10 @@ comment on each other's check-ins, and climb a weekly leaderboard.
 - Notification delivery health (sent/failed/skipped counts, recent failures)
 
 ## Changelog
+
+### 2026-10-09 (later)
+- Realtime server: moved to Singapore, auto-deploys from `main`, health check, and periodic connection stats in its logs ([#122](https://github.com/yugeshralli-vm/clan-fitness/pull/122))
+- Green online dot on clanmates' avatars ([#121](https://github.com/yugeshralli-vm/clan-fitness/pull/121))
 
 ### 2026-10-09
 - Live duel scoreboards, overtake alerts, and toasts when clanmates claim or complete contracts ([#118](https://github.com/yugeshralli-vm/clan-fitness/pull/118), merged to main via [#119](https://github.com/yugeshralli-vm/clan-fitness/pull/119))

@@ -21,6 +21,11 @@ import { WebSocketServer } from "ws";
 const PORT = Number(process.env.PORT ?? 8080);
 const SECRET = process.env.REALTIME_SECRET;
 const HEARTBEAT_MS = 30_000;
+const STATS_LOG_MS = 5 * 60_000;
+const startedAt = Date.now();
+
+/** Counters since the last stats line — never ids or tokens, just volumes. */
+const stats = { connects: 0, disconnects: 0, rejected: 0, published: 0, delivered: 0, typing: 0 };
 const MAX_PUBLISH_BODY_BYTES = 64 * 1024;
 const MAX_CLIENT_MESSAGE_BYTES = 512;
 /** Per socket per clan — clients already throttle; this just caps a misbehaving one. */
@@ -111,7 +116,12 @@ function sendJson(res, status, body) {
 
 const server = createServer((req, res) => {
   if (req.method === "GET" && req.url === "/health") {
-    return sendJson(res, 200, { ok: true, rooms: rooms.size });
+    return sendJson(res, 200, {
+      ok: true,
+      sockets: wss.clients.size,
+      rooms: rooms.size,
+      uptimeSeconds: Math.round((Date.now() - startedAt) / 1000),
+    });
   }
 
   if (req.method === "POST" && req.url === "/publish") {
@@ -127,7 +137,10 @@ const server = createServer((req, res) => {
       try {
         const events = parsePublishBody(body);
         if (!events) return sendJson(res, 400, { error: "room and event required" });
-        sendJson(res, 200, { delivered: events.reduce((sum, e) => sum + broadcast(e), 0) });
+        const delivered = events.reduce((sum, e) => sum + broadcast(e), 0);
+        stats.published += events.length;
+        stats.delivered += delivered;
+        sendJson(res, 200, { delivered });
       } catch {
         sendJson(res, 400, { error: "invalid json" });
       }
@@ -144,6 +157,7 @@ server.on("upgrade", (req, socket, head) => {
   const token = new URL(req.url ?? "/", "http://localhost").searchParams.get("token");
   const payload = verifyToken(token);
   if (!payload) {
+    stats.rejected += 1;
     socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
     socket.destroy();
     return;
@@ -157,6 +171,7 @@ server.on("upgrade", (req, socket, head) => {
     ws.isAlive = true;
     for (const name of ws.rooms) joinRoom(name, ws);
     addPresence(ws);
+    stats.connects += 1;
     ws.on("pong", () => {
       ws.isAlive = true;
     });
@@ -222,12 +237,14 @@ function handleClientMessage(socket, data) {
   const now = Date.now();
   if (now - (socket.lastTypingAt.get(message.clanId) ?? 0) < MIN_TYPING_INTERVAL_MS) return;
   socket.lastTypingAt.set(message.clanId, now);
+  stats.typing += 1;
   sendToClan(message.clanId, { type: "typing", clanId: message.clanId, userId: socket.userId }, socket);
 }
 
 function disconnect(socket) {
   if (socket.disconnected) return;
   socket.disconnected = true;
+  stats.disconnects += 1;
   leaveRooms(socket);
   removePresence(socket);
 }
@@ -245,8 +262,22 @@ const heartbeat = setInterval(() => {
   }
 }, HEARTBEAT_MS);
 
+// One line every few minutes so Railway's logs show whether anyone is actually connected.
+function logStats() {
+  const onlineUsers = new Set(Array.from(wss.clients, (ws) => ws.userId)).size;
+  console.log(
+    `stats sockets=${wss.clients.size} users=${onlineUsers} rooms=${rooms.size}` +
+      ` connects=${stats.connects} disconnects=${stats.disconnects} rejected=${stats.rejected}` +
+      ` published=${stats.published} delivered=${stats.delivered} typing=${stats.typing}`,
+  );
+  for (const key of Object.keys(stats)) stats[key] = 0;
+}
+const statsTimer = setInterval(logStats, STATS_LOG_MS);
+
 function shutdown() {
   clearInterval(heartbeat);
+  clearInterval(statsTimer);
+  logStats();
   for (const ws of wss.clients) ws.close(1012, "restarting");
   server.close(() => process.exit(0));
 }
