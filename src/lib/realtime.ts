@@ -28,7 +28,7 @@ export function signRealtimeToken(userId: string, clanIds: string[]): string | n
   return `${payload}.${signature}`;
 }
 
-type PublishedEvent = { room: string; event: RealtimeEvent; actor?: string };
+type PublishedEvent = { room: string; event: RealtimeEvent; actor?: string; data?: unknown };
 
 /** Best-effort: a failure here must never fail the write that triggered it — clients still pick
  * the change up on their fallback poll or next visit. */
@@ -48,10 +48,11 @@ async function publish(events: PublishedEvent[]): Promise<void> {
 }
 
 /** Tells everyone with any of these clans open that something changed. `actor` is the user who
- * caused it, so their own UI can skip things like unread dots. */
-export function publishClanEvent(clanIds: string | string[], event: RealtimeEvent, actor?: string) {
+ * caused it, so their own UI can skip things like unread dots. `data` is relayed as-is — only
+ * for things every member of the clan may already see. */
+export function publishClanEvent(clanIds: string | string[], event: RealtimeEvent, actor?: string, data?: unknown) {
   const ids = Array.isArray(clanIds) ? clanIds : [clanIds];
-  return publish(ids.map((clanId) => ({ room: `clan:${clanId}`, event, actor })));
+  return publish(ids.map((clanId) => ({ room: `clan:${clanId}`, event, actor, data })));
 }
 
 export function publishUserEvent(userId: string, event: RealtimeEvent) {

@@ -54,9 +54,9 @@ export function ProfileLevelSummary({
   }
 
   // Pending points can move with activity in any of the user's clans (a duel opponent's check-in,
-  // a comment completing a contract) or when the nightly cron resolves claims.
+  // a comment or chat message completing a contract) or when the nightly cron resolves claims.
   useRealtime({
-    events: ["contracts", "feed_post", "feed_engagement"],
+    events: ["contracts", "feed_post", "feed_engagement", "chat_message", "chat_reaction"],
     fallbackPollMs: FALLBACK_POLL_INTERVAL_MS,
     onChange: refresh,
   });

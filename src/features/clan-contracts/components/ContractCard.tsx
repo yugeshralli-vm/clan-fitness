@@ -17,6 +17,35 @@ const TIER_STAR_CLASSES: Record<1 | 2 | 3, string> = {
   3: "text-amber-400",
 };
 
+const compactSteps = new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 });
+
+/** Live "who's ahead" bar for a duel claim — refreshes with the board on every check-in. */
+function DuelScoreboard({
+  claimantName,
+  opponentName,
+  steps,
+}: {
+  claimantName: string;
+  opponentName: string;
+  steps: { claimant: number; opponent: number };
+}) {
+  const total = steps.claimant + steps.opponent;
+  const claimantShare = total > 0 ? (steps.claimant / total) * 100 : 50;
+  const claimantLeads = steps.claimant > steps.opponent;
+  const opponentLeads = steps.opponent > steps.claimant;
+  return (
+    <div className="flex flex-col gap-1" aria-label={`${claimantName} ${steps.claimant} steps, ${opponentName} ${steps.opponent} steps`}>
+      <div className="flex justify-between gap-2 text-[11px] tabular-nums">
+        <span className={claimantLeads ? "font-semibold text-foreground" : ""}>{compactSteps.format(steps.claimant)}</span>
+        <span className={opponentLeads ? "font-semibold text-foreground" : ""}>{compactSteps.format(steps.opponent)}</span>
+      </div>
+      <div className="flex h-1.5 overflow-hidden rounded-full bg-foreground-tertiary/25">
+        <div className="rounded-full bg-accent transition-[width] duration-500" style={{ width: `${claimantShare}%` }} />
+      </div>
+    </div>
+  );
+}
+
 export function TierStars({ tier, size = 10 }: { tier: ContractTier; size?: number }) {
   return (
     <span className={`flex items-center gap-0.5 ${TIER_STAR_CLASSES[tier]}`}>
@@ -75,12 +104,17 @@ export function ContractCard({
       )}
 
       {claim ? (
-        <div className="mt-1 flex min-w-0 items-start gap-1.5 rounded-md bg-background/60 px-2 py-1.5 text-xs text-foreground-tertiary">
-          <Avatar src={claim.userAvatarUrl} name={claim.userName} size={16} />
-          <span className="line-clamp-2 min-w-0 flex-1">
-            {claim.opponentName ? `${claim.userName} vs ${claim.opponentName}` : `Claimed by ${claim.userName}`}
-          </span>
-          {liveCompleted && <Check size={14} className="shrink-0 text-success" />}
+        <div className="mt-1 flex min-w-0 flex-col gap-1.5 rounded-md bg-background/60 px-2 py-1.5 text-xs text-foreground-tertiary">
+          <div className="flex min-w-0 items-start gap-1.5">
+            <Avatar src={claim.userAvatarUrl} name={claim.userName} size={16} />
+            <span className="line-clamp-2 min-w-0 flex-1">
+              {claim.opponentName ? `${claim.userName} vs ${claim.opponentName}` : `Claimed by ${claim.userName}`}
+            </span>
+            {liveCompleted && <Check size={14} className="shrink-0 text-success" />}
+          </div>
+          {claim.opponentName && claim.duelSteps && claim.status === "claimed" && (
+            <DuelScoreboard claimantName={claim.userName} opponentName={claim.opponentName} steps={claim.duelSteps} />
+          )}
         </div>
       ) : confirming ? (
         <div className="mt-1 flex items-center gap-1.5">

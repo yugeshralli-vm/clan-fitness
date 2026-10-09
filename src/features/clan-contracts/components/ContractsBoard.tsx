@@ -98,10 +98,10 @@ export function ContractsBoard({
     }
   }
 
-  // Contract progress depends on check-ins, comments and reactions, not just claims — so any of
-  // those in this clan can tick a card off.
+  // Contract progress depends on check-ins, comments, reactions and chat ("Say hi"), not just
+  // claims — so any of those in this clan can tick a card off or move a duel's scoreboard.
   useRealtime({
-    events: ["contracts", "feed_post", "feed_engagement"],
+    events: ["contracts", "feed_post", "feed_engagement", "chat_message", "chat_reaction"],
     clanId,
     fallbackPollMs: FALLBACK_POLL_INTERVAL_MS,
     onChange: refresh,

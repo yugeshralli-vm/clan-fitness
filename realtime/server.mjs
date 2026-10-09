@@ -83,11 +83,12 @@ function leaveRooms(socket) {
 
 /** `room` is "clan:<id>" or "user:<id>"; the frame echoes the clan id (if any) so a client in
  * several clans' rooms can tell which one changed. */
-function broadcast({ room: name, event, actor }) {
+function broadcast({ room: name, event, actor, data }) {
   const room = rooms.get(name);
   if (!room) return 0;
   const clanId = name.startsWith("clan:") ? name.slice("clan:".length) : undefined;
-  const frame = JSON.stringify({ type: "changed", event, clanId, actor });
+  // `data` is opaque here — the app decides what's safe to send to a room (see publishClanEvent).
+  const frame = JSON.stringify({ type: "changed", event, clanId, actor, data });
   for (const socket of room) {
     if (socket.readyState === socket.OPEN) socket.send(frame);
   }

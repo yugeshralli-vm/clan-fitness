@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { db } from "@/db";
 import { checkIns, comments } from "@/db/schema";
+import { announceContractCompletions } from "@/features/clan-contracts/moments";
 import { getClanMembers, getClanMembership } from "@/features/clans/queries";
 import { notifyUser } from "@/features/notifications/send";
 import { extractMentionedUserIds, mentionsToPlainText } from "@/lib/mentions";
@@ -42,6 +43,7 @@ export async function addComment(
 
   revalidatePath(`/clans/${clanId}`);
   after(() => publishClanEvent(clanId, "feed_engagement", user.id));
+  after(() => announceContractCompletions(user));
 
   // Mention targets must be members of this same clan — the commenter's own membership was
   // already verified above.
@@ -113,6 +115,7 @@ export async function addSystemPostComment(
 
   revalidatePath(`/clans/${clanId}`);
   after(() => publishClanEvent(clanId, "feed_engagement", user.id));
+  after(() => announceContractCompletions(user));
 
   // Mention targets must be members of this same clan — the commenter's own membership was
   // already verified above.
