@@ -10,6 +10,9 @@
 //   a `user:<id>` room plus one `clan:<id>` room per clan.
 // - The Next.js app POSTs /publish with the same secret after a write; every socket in the target
 //   room gets a `changed` frame with the event name (and who caused it, so UIs can ignore their own).
+// - Presence and typing are the one exception to "no content": the server tracks which users have a
+//   socket open per clan and relays `typing` pings between clanmates, sending only user ids, and
+//   only to sockets whose token covers that clan.
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
@@ -19,6 +22,9 @@ const PORT = Number(process.env.PORT ?? 8080);
 const SECRET = process.env.REALTIME_SECRET;
 const HEARTBEAT_MS = 30_000;
 const MAX_PUBLISH_BODY_BYTES = 64 * 1024;
+const MAX_CLIENT_MESSAGE_BYTES = 512;
+/** Per socket per clan — clients already throttle; this just caps a misbehaving one. */
+const MIN_TYPING_INTERVAL_MS = 1000;
 
 if (!SECRET) {
   console.error("REALTIME_SECRET is not set");
@@ -27,6 +33,8 @@ if (!SECRET) {
 
 /** room ("clan:<id>" / "user:<id>") -> sockets in it */
 const rooms = new Map();
+/** clanId -> (userId -> number of that user's open sockets), for "who's online" */
+const presence = new Map();
 
 function safeEqual(a, b) {
   const bufA = Buffer.from(a);
@@ -44,8 +52,12 @@ function verifyToken(token) {
   try {
     const payload = JSON.parse(Buffer.from(payloadPart, "base64url").toString("utf8"));
     if (typeof payload.u !== "string") return null;
-    // Older tokens (before the per-user room) carried a single clan id as a string.
-    if (typeof payload.c === "string") payload.c = [payload.c];
+    // Older tokens (before the per-user room) carried a single clan id as a string — those
+    // clients predate presence/typing frames too.
+    if (typeof payload.c === "string") {
+      payload.c = [payload.c];
+      payload.legacy = true;
+    }
     if (!Array.isArray(payload.c) || !payload.c.every((id) => typeof id === "string")) return null;
     if (typeof payload.exp !== "number" || payload.exp < Date.now() / 1000) return null;
     return payload;
@@ -125,7 +137,7 @@ const server = createServer((req, res) => {
   sendJson(res, 404, { error: "not found" });
 });
 
-const wss = new WebSocketServer({ noServer: true });
+const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_CLIENT_MESSAGE_BYTES });
 
 server.on("upgrade", (req, socket, head) => {
   const token = new URL(req.url ?? "/", "http://localhost").searchParams.get("token");
@@ -136,17 +148,88 @@ server.on("upgrade", (req, socket, head) => {
     return;
   }
   wss.handleUpgrade(req, socket, head, (ws) => {
+    ws.userId = payload.u;
+    ws.clanIds = payload.c;
+    ws.legacy = !!payload.legacy;
+    ws.lastTypingAt = new Map();
     ws.rooms = [`user:${payload.u}`, ...payload.c.map((clanId) => `clan:${clanId}`)];
     ws.isAlive = true;
     for (const name of ws.rooms) joinRoom(name, ws);
+    addPresence(ws);
     ws.on("pong", () => {
       ws.isAlive = true;
     });
-    // Clients never need to send anything; ignore whatever arrives.
-    ws.on("close", () => leaveRooms(ws));
-    ws.on("error", () => leaveRooms(ws));
+    ws.on("message", (data) => handleClientMessage(ws, data));
+    ws.on("close", () => disconnect(ws));
+    ws.on("error", () => disconnect(ws));
   });
 });
+
+function send(socket, frame) {
+  if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(frame));
+}
+
+/** Presence/typing frames only go to clients that understand them — sockets on a pre-presence
+ * token treat any frame as "chat changed" and would refetch on every join/leave. */
+function sendToClan(clanId, frame, except) {
+  for (const socket of rooms.get(`clan:${clanId}`) ?? []) {
+    if (socket !== except && !socket.legacy) send(socket, frame);
+  }
+}
+
+function presenceFrame(clanId) {
+  return { type: "presence", clanId, userIds: [...(presence.get(clanId)?.keys() ?? [])] };
+}
+
+function addPresence(socket) {
+  for (const clanId of socket.clanIds) {
+    let users = presence.get(clanId);
+    if (!users) presence.set(clanId, (users = new Map()));
+    const count = users.get(socket.userId) ?? 0;
+    users.set(socket.userId, count + 1);
+    // A second tab of an already-online user changes nothing for anyone else.
+    if (count === 0) sendToClan(clanId, presenceFrame(clanId), socket);
+    if (!socket.legacy) send(socket, presenceFrame(clanId));
+  }
+}
+
+function removePresence(socket) {
+  for (const clanId of socket.clanIds) {
+    const users = presence.get(clanId);
+    const count = users?.get(socket.userId);
+    if (!count) continue;
+    if (count > 1) {
+      users.set(socket.userId, count - 1);
+      continue;
+    }
+    users.delete(socket.userId);
+    if (users.size === 0) presence.delete(clanId);
+    sendToClan(clanId, presenceFrame(clanId));
+  }
+}
+
+function handleClientMessage(socket, data) {
+  if (socket.legacy) return;
+  let message;
+  try {
+    message = JSON.parse(String(data));
+  } catch {
+    return;
+  }
+  if (message?.type !== "typing" || typeof message.clanId !== "string") return;
+  if (!socket.clanIds.includes(message.clanId)) return;
+  const now = Date.now();
+  if (now - (socket.lastTypingAt.get(message.clanId) ?? 0) < MIN_TYPING_INTERVAL_MS) return;
+  socket.lastTypingAt.set(message.clanId, now);
+  sendToClan(message.clanId, { type: "typing", clanId: message.clanId, userId: socket.userId }, socket);
+}
+
+function disconnect(socket) {
+  if (socket.disconnected) return;
+  socket.disconnected = true;
+  leaveRooms(socket);
+  removePresence(socket);
+}
 
 // Railway's proxy (and mobile networks) drop idle connections — ping keeps them open and reaps
 // sockets whose client vanished without a close frame.
