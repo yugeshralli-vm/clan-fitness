@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { getAppConfig } from "@/features/admin/config";
+import { getFoodPhotoUrls, type FoodCheckInValue } from "@/features/check-ins/types";
+import { levelForPoints } from "@/features/clan-contracts/level";
 import { getCommentCountsForCheckIns } from "@/features/comments/queries";
 import { getClanFeed } from "@/features/check-ins/queries";
 import { getClanMembership } from "@/features/clans/queries";
@@ -10,7 +13,7 @@ import {
   groupByDay,
   groupByUserAndDay,
 } from "@/features/feed/group";
-import { getReactionCountsForCheckIns } from "@/features/reactions/queries";
+import { getReactionsForCheckIns } from "@/features/reactions/queries";
 import { apiError, requireApiUser } from "@/lib/api-response";
 import { refreshUserTimezone } from "@/lib/current-user";
 import { isValidTimeZone } from "@/lib/timezone-date";
@@ -36,9 +39,10 @@ export async function GET(request: Request) {
 
   const { rows, hasMore } = await getClanFeed(clanId, viewerTimezone, before ? new Date(before) : undefined);
   const checkInIds = rows.map((row) => row.checkIn.id);
-  const [reactionCounts, commentCounts] = await Promise.all([
-    getReactionCountsForCheckIns(checkInIds, clanId),
+  const [reactionSummaries, commentCounts, levelCurveConfig] = await Promise.all([
+    getReactionsForCheckIns(checkInIds, clanId, user.id),
     getCommentCountsForCheckIns(checkInIds, clanId),
+    getAppConfig(),
   ]);
 
   const dayGroups = groupByUserAndDay(rows, viewerTimezone);
@@ -51,7 +55,12 @@ export async function GET(request: Request) {
       const cardId = group.entries[group.entries.length - 1].id;
       return {
         cardId,
-        user: { id: group.user.id, name: group.user.name, avatarUrl: group.user.avatarUrl },
+        user: {
+          id: group.user.id,
+          name: group.user.name,
+          avatarUrl: group.user.avatarUrl,
+          level: levelForPoints(group.user.totalPoints, levelCurveConfig),
+        },
         latestAt: group.latestAt.toISOString(),
         entries: dedupeEntriesForDisplay(group.entries).map((entry) => ({
           id: entry.id,
@@ -60,8 +69,18 @@ export async function GET(request: Request) {
           createdAt: entry.createdAt.toISOString(),
           icon: getCheckInIcon(entry.type, entry.value),
           caption: describeCheckIn(entry.type, entry.value, entry.id),
+          photoUrls: entry.type === "food" ? getFoodPhotoUrls(entry.value as FoodCheckInValue) : [],
         })),
-        reactionCount: reactionCounts[cardId] ?? 0,
+        // Per emoji, like the web ReactionBar's pills — counts and whether the viewer reacted,
+        // not the reactor list itself (that's only needed when someone opens the who-reacted sheet).
+        // Kept for app builds from before per-emoji `reactions` existed.
+        reactionCount: Object.values(reactionSummaries[cardId] ?? {}).reduce((sum, entry) => sum + entry.users.length, 0),
+        reactions: Object.fromEntries(
+          Object.entries(reactionSummaries[cardId] ?? {}).map(([emoji, entry]) => [
+            emoji,
+            { count: entry.users.length, reactedByMe: entry.reactedByMe },
+          ]),
+        ),
         commentCount: commentCounts[cardId] ?? 0,
       };
     }),

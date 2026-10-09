@@ -1,35 +1,9 @@
 import "server-only";
 
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { reactions, users } from "@/db/schema";
 import type { ReactionSummary } from "./types";
-
-/**
- * Count-only variant of getReactionsForCheckIns for the mobile feed API, which shows a bare count
- * badge (no reactor names/avatars, no per-emoji breakdown) rather than the full reactor list web's
- * ReactionBar needs — avoids shipping every reactor's identity over a mobile network just to
- * discard everything but the total.
- */
-export async function getReactionCountsForCheckIns(
-  checkInIds: string[],
-  clanId: string,
-): Promise<Record<string, number>> {
-  const counts: Record<string, number> = {};
-  if (checkInIds.length === 0) return counts;
-
-  const rows = await db
-    .select({ checkInId: reactions.checkInId, count: count() })
-    .from(reactions)
-    .where(and(inArray(reactions.checkInId, checkInIds), eq(reactions.clanId, clanId)))
-    .groupBy(reactions.checkInId);
-
-  for (const row of rows) {
-    if (!row.checkInId) continue;
-    counts[row.checkInId] = row.count;
-  }
-  return counts;
-}
 
 export async function getReactionsForCheckIns(
   checkInIds: string[],
