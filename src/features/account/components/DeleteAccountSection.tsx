@@ -4,7 +4,8 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useActionToast } from "@/lib/use-action-toast";
-import { DELETE_ACCOUNT_CONFIRMATION, deleteMyAccount } from "../actions";
+import { deleteMyAccount } from "../actions";
+import { DELETE_ACCOUNT_CONFIRMATION } from "../constants";
 
 /** Same two-step pattern as DeleteClanSection: a danger button, then type-to-confirm. */
 export function DeleteAccountSection() {
