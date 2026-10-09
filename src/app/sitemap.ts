@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next";
 
-// The landing page is the only public, indexable route today (see robots.ts) — add entries here
-// if more public marketing pages are ever added.
+// Public, indexable routes (see robots.ts) — add entries here if more public pages are added.
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
@@ -9,6 +8,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 1,
+    },
+    {
+      url: "https://www.clanfitness.in/privacy",
+      lastModified: new Date(),
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
   ];
 }
