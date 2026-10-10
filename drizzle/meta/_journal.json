@@ -183,6 +183,13 @@
       "when": 1784386333232,
       "tag": "0025_cool_blue_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791620457644,
+      "tag": "0026_fast_whirlwind",
+      "breakpoints": true
     }
   ]
 }

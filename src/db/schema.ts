@@ -223,6 +223,23 @@ export const pushSubscriptions = pgTable(
   (t) => [index("push_subscriptions_user_idx").on(t.userId)],
 );
 
+// Android app installs' Firebase Cloud Messaging tokens — the native counterpart of
+// push_subscriptions (web push). One row per device; a token that FCM reports as gone is deleted.
+export const devicePushTokens = pgTable(
+  "device_push_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    token: text("token").notNull().unique(),
+    platform: text("platform").notNull().default("android"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [index("device_push_tokens_user_idx").on(t.userId)],
+);
+
 export const notificationTypeEnum = pgEnum("notification_type", [
   "comment",
   "mention",

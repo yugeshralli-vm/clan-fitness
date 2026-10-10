@@ -11,6 +11,7 @@ import {
   clanMessages,
   clans,
   comments,
+  devicePushTokens,
   goals,
   notificationDeliveries,
   notifications,
@@ -112,6 +113,7 @@ export async function deleteAccount(userId: string): Promise<void> {
   await db.delete(notifications).where(eq(notifications.userId, userId));
   await db.delete(notificationDeliveries).where(eq(notificationDeliveries.userId, userId));
   await db.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+  await db.delete(devicePushTokens).where(eq(devicePushTokens.userId, userId));
   await db.delete(checkIns).where(eq(checkIns.userId, userId));
   // Replies quoting these messages keep their text; their reply link is set null by the FK.
   await db.delete(clanMessages).where(eq(clanMessages.userId, userId));
