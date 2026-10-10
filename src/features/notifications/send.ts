@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { notifications, pushSubscriptions, users } from "@/db/schema";
 import { publishUserEvent } from "@/lib/realtime";
 import { logNotificationDelivery } from "./delivery-log";
+import { sendFcmNotifications } from "./fcm";
 import { getPushSubscriptionsForUser, getUnreadNotificationCount } from "./queries";
 import { sendEmailNotification } from "./send-email";
 import type { NotificationPayload, NotificationType } from "./types";
@@ -41,8 +42,14 @@ function ensureVapidConfigured(): boolean {
   return true;
 }
 
+/** Web push and Android (FCM) together. Returns how many sends succeeded across both. */
+async function sendPushNotifications(userId: string, payload: NotificationPayload & { unreadCount?: number }): Promise<number> {
+  const [web, android] = await Promise.all([sendWebPushNotifications(userId, payload), sendFcmNotifications(userId, payload)]);
+  return web + android;
+}
+
 /** Sends a push notification to every device the user has subscribed on. Silently drops subscriptions the push service reports as gone. Returns how many sends succeeded. */
-async function sendPushNotifications(
+async function sendWebPushNotifications(
   userId: string,
   payload: NotificationPayload & { unreadCount?: number },
 ): Promise<number> {
