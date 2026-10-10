@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAppConfig } from "@/features/admin/config";
 import { getFoodPhotoUrls, type FoodCheckInValue } from "@/features/check-ins/types";
 import { levelForPoints } from "@/features/clan-contracts/level";
-import { getCommentCountsForCheckIns } from "@/features/comments/queries";
+import { getCommentCountsForCheckIns, getCommentsForSystemPosts } from "@/features/comments/queries";
 import { getClanFeed } from "@/features/check-ins/queries";
 import { getClanMembership } from "@/features/clans/queries";
 import {
@@ -13,10 +13,19 @@ import {
   groupByDay,
   groupByUserAndDay,
 } from "@/features/feed/group";
-import { getReactionsForCheckIns } from "@/features/reactions/queries";
+import { getReactionsForCheckIns, getReactionsForSystemPosts } from "@/features/reactions/queries";
+import type { ReactionSummary } from "@/features/reactions/types";
+import { getSystemPostsForClan } from "@/features/system-posts/queries";
 import { apiError, requireApiUser } from "@/lib/api-response";
 import { refreshUserTimezone } from "@/lib/current-user";
-import { isValidTimeZone } from "@/lib/timezone-date";
+import { isValidTimeZone, userDayKey } from "@/lib/timezone-date";
+
+/** Per emoji, counts and whether the viewer reacted — like the web ReactionBar's pills. */
+function reactionCounts(summary: ReactionSummary | undefined) {
+  return Object.fromEntries(
+    Object.entries(summary ?? {}).map(([emoji, entry]) => [emoji, { count: entry.users.length, reactedByMe: entry.reactedByMe }]),
+  );
+}
 
 export async function GET(request: Request) {
   const r = await requireApiUser();
@@ -88,5 +97,35 @@ export async function GET(request: Request) {
 
   const nextCursor = hasMore && rows.length > 0 ? rows[rows.length - 1].checkIn.createdAt.toISOString() : null;
 
-  return NextResponse.json({ sections, hasMore, nextCursor });
+  // Weekly recaps, first page only — the web merges them into its first page the same way
+  // (mergeFeedCards). A separate list rather than cards inside `sections`, so app builds that
+  // predate recaps keep working; newer ones place each by its `day` and `createdAt`.
+  const systemPosts = before ? [] : await getSystemPostsForClan(clanId);
+  const systemPostIds = systemPosts.map((post) => post.id);
+  const [postReactions, postComments] = await Promise.all([
+    getReactionsForSystemPosts(systemPostIds, clanId, user.id),
+    getCommentsForSystemPosts(systemPostIds, clanId),
+  ]);
+
+  return NextResponse.json({
+    sections,
+    hasMore,
+    nextCursor,
+    systemPosts: systemPosts.map((post) => {
+      const day = userDayKey(viewerTimezone, post.createdAt);
+      return {
+        id: post.id,
+        day,
+        dayLabel: formatDayLabel(day, viewerTimezone),
+        createdAt: post.createdAt.toISOString(),
+        weekStart: post.weekStart.toISOString(),
+        // Exclusive, like the web: the card shows the day before as the week's last day.
+        weekEnd: post.weekEnd.toISOString(),
+        topThree: post.topThree,
+        wallOfShame: post.wallOfShame,
+        reactions: reactionCounts(postReactions[post.id]),
+        commentCount: postComments[post.id]?.length ?? 0,
+      };
+    }),
+  });
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getTodaysCheckIn, getUserStreak, getUserWeeklyCount } from "@/features/check-ins/queries";
 import { applyDailyCheckIn } from "@/features/check-ins/log-check-in";
-import { getFoodPhotoUrls } from "@/features/check-ins/types";
+import { getFoodPhotoUrls, sanitizeFoodPhotoUrls } from "@/features/check-ins/types";
 import type {
   FoodCheckInValue,
   FoodStatus,
@@ -67,13 +67,15 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object") return apiError(400, "Invalid request body.");
 
-  const { timezone, workedOut, gymNote, stepsCount, foodStatus, foodNote, thought } = body as {
+  const { timezone, workedOut, gymNote, stepsCount, foodStatus, foodNote, photoUrls, thought } = body as {
     timezone?: string;
     workedOut?: boolean;
     gymNote?: string;
     stepsCount?: number;
     foodStatus?: FoodStatus;
     foodNote?: string;
+    /** The day's full photo list (uploaded via /api/v1/uploads/food-photo). Omit to keep today's photos. */
+    photoUrls?: unknown;
     thought?: string;
   };
 
@@ -84,10 +86,21 @@ export async function POST(request: Request) {
   if (foodStatus !== undefined && !FOOD_STATUSES.includes(foodStatus)) {
     return apiError(400, "Invalid food status.");
   }
+  if (photoUrls !== undefined && !Array.isArray(photoUrls)) return apiError(400, "photoUrls must be an array.");
 
   const user = await refreshUserTimezone(r.user, timezone);
 
-  await applyDailyCheckIn(user, { workedOut, gymNote, stepsCount, foodStatus, foodNote, thought });
+  // A food write replaces the day's photos, so an app version without photo support (no
+  // photoUrls) must carry over the ones already there — e.g. added from the web — not wipe them.
+  // Only when it's writing food anyway: carried-over photos alone would trigger a food write.
+  const keptPhotoUrls =
+    photoUrls !== undefined
+      ? sanitizeFoodPhotoUrls(photoUrls)
+      : foodStatus !== undefined
+        ? getFoodPhotoUrls((await getTodaysCheckIn(user.id, "food", user.timezone))?.value as FoodCheckInValue | undefined)
+        : undefined;
+
+  await applyDailyCheckIn(user, { workedOut, gymNote, stepsCount, foodStatus, foodNote, photoUrls: keptPhotoUrls, thought });
 
   return NextResponse.json(await buildLogsResponse(user));
 }

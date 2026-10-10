@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { createClanFor } from "@/features/clans/mutations";
 import { getClanMemberCount, getUserClans } from "@/features/clans/queries";
-import { requireApiUser } from "@/lib/api-response";
+import { apiError, requireApiUser } from "@/lib/api-response";
 
 export async function GET() {
   const r = await requireApiUser();
@@ -20,4 +21,19 @@ export async function GET() {
       maxSize: m.clan.maxSize,
     })),
   });
+}
+
+/**
+ * POST /api/v1/clans { name, description? } — create a clan with you as its admin (web /clans/new).
+ * Returns its id; the web then shows the welcome page (set goals, share the invite).
+ */
+export async function POST(request: Request) {
+  const r = await requireApiUser();
+  if ("error" in r) return r.error;
+  const body = (await request.json().catch(() => null)) as { name?: string; description?: string } | null;
+  if (!body) return apiError(400, "Invalid request body.");
+
+  const result = await createClanFor(r.user.id, body.name ?? "", body.description ?? "");
+  if ("error" in result) return apiError(400, result.error);
+  return NextResponse.json(result, { status: 201 });
 }

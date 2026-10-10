@@ -11,11 +11,10 @@ import { getTodaysCheckIn } from "./queries";
 import type { CheckInType, FoodCheckInValue, FoodStatus } from "./types";
 
 /**
- * Shared upsert core behind both the web Server Action (src/features/check-ins/actions.ts, which
- * additionally handles FormData parsing and Blob-URL photo validation before calling this) and the
- * mobile /api/v1/logs route (src/app/api/v1/logs/route.ts, which never sets photoUrls — that field
- * exists here only so the web caller can keep sharing this one upsert implementation for food
- * rather than duplicating it for a photo-less variant).
+ * Shared upsert core behind both the web Server Action (src/features/check-ins/actions.ts) and the
+ * app's /api/v1/logs route — each validates its input (Blob photo URLs included) before calling
+ * this. A food write replaces the day's photos with `photoUrls` (none if absent), so callers send
+ * the full list they want kept.
  */
 export type DailyCheckInInput = {
   workedOut?: boolean;
@@ -95,8 +94,7 @@ export async function applyDailyCheckIn(
   const photoUrls = input.photoUrls ?? [];
   const hasPhoto = photoUrls.length > 0;
   // A photo can be logged on its own — this block runs whenever either is present, not just on
-  // hasFoodStatus (mobile callers never set photoUrls, so this is equivalent to hasFoodStatus for
-  // them — identical to a web user submitting the form with no photos).
+  // hasFoodStatus.
   if (hasFoodStatus || hasPhoto) {
     const foodNote = input.foodNote?.trim() || undefined;
     const existingFood = await getTodaysCheckIn(user.id, "food", user.timezone);

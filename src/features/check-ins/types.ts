@@ -21,3 +21,17 @@ export function getFoodPhotoUrls(value: FoodCheckInValue | undefined): string[] 
   const legacyUrl = (value as { photoUrl?: string }).photoUrl;
   return legacyUrl ? [legacyUrl] : [];
 }
+
+/** Food photos per day — the web Log form's limit, also enforced on the API. */
+export const MAX_FOOD_PHOTOS = 3;
+
+// Photos are uploaded to Vercel Blob (client-direct on web via src/app/api/check-ins/upload, through
+// /api/v1/uploads/food-photo from the app), so a log only ever carries the resulting URLs. Not a
+// security boundary (next/image's remotePatterns already refuses unlisted hosts) — just a cheap
+// sanity filter against hand-crafted submissions.
+const BLOB_URL_PATTERN = /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//i;
+
+/** The submitted values that look like our Blob photo URLs, capped at MAX_FOOD_PHOTOS. */
+export function sanitizeFoodPhotoUrls(values: unknown[]): string[] {
+  return values.filter((v): v is string => typeof v === "string" && BLOB_URL_PATTERN.test(v)).slice(0, MAX_FOOD_PHOTOS);
+}
