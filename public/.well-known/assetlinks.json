@@ -12,7 +12,10 @@
     "target": {
       "namespace": "android_app",
       "package_name": "com.clan.fitness",
-      "sha256_cert_fingerprints": ["3D:6E:77:79:8C:68:86:85:C6:6C:DA:41:F2:3D:CA:92:D9:30:45:F1:F8:A8:00:55:68:F1:59:C5:32:1A:26:6B"]
+      "sha256_cert_fingerprints": [
+        "19:3F:5D:D0:D2:CB:7C:81:77:9E:24:61:79:93:4C:87:36:4A:81:59:BD:18:F6:67:14:29:8C:45:8A:8B:4B:E4",
+        "3D:6E:77:79:8C:68:86:85:C6:6C:DA:41:F2:3D:CA:92:D9:30:45:F1:F8:A8:00:55:68:F1:59:C5:32:1A:26:6B"
+      ]
     }
   }
 ]
