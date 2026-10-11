@@ -6,5 +6,13 @@
       "package_name": "in.clanfitness.twa",
       "sha256_cert_fingerprints": ["32:69:8C:AD:D1:22:60:4F:B4:9D:7A:92:F1:1D:48:60:10:51:93:F8:A5:D7:86:CA:8C:72:66:E8:9C:D5:1F:31"]
     }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.clan.fitness",
+      "sha256_cert_fingerprints": ["3D:6E:77:79:8C:68:86:85:C6:6C:DA:41:F2:3D:CA:92:D9:30:45:F1:F8:A8:00:55:68:F1:59:C5:32:1A:26:6B"]
+    }
   }
 ]
